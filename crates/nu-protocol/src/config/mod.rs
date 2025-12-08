@@ -8,7 +8,7 @@ use std::collections::HashMap;
 
 pub use ansi_coloring::UseAnsiColoring;
 pub use completions::{
-    CompletionAlgorithm, CompletionConfig, CompletionSort, ExternalCompleterConfig,
+    CompletionAlgorithm, CompletionConfig, CompletionSort, CompletionStyle, ExternalCompleterConfig,
 };
 pub use datetime_format::DatetimeFormatConfig;
 pub use display_errors::DisplayErrors;

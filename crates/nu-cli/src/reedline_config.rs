@@ -7,6 +7,7 @@ use nu_parser::parse;
 use nu_protocol::{
     Config, EditBindings, FromValue, ParsedKeybinding, ParsedMenu, PipelineData, Record,
     ShellError, Span, Type, Value,
+    config::CompletionStyle,
     debugger::WithoutDebug,
     engine::{EngineState, Stack, StateWorkingSet},
     extract_value,
@@ -184,6 +185,16 @@ pub(crate) fn add_menus(
             )?;
         }
     }
+
+    let completion_style = &config.completions.style;
+    line_editor = line_editor.with_autocompletion(
+        config.completions.type_to_complete,
+        match completion_style {
+            CompletionStyle::Normal => "completion_menu",
+            CompletionStyle::Ide => "ide_completion_menu",
+        }
+        .into(),
+    );
 
     Ok(line_editor)
 }
