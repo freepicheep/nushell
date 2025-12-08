@@ -49,6 +49,32 @@ impl FromStr for CompletionSort {
 }
 
 impl UpdateFromValue for CompletionSort {
+
+    fn update(&mut self, value: &Value, path: &mut ConfigPath, errors: &mut ConfigErrors) {
+        config_update_string_enum(self, value, path, errors)
+    }
+}
+
+#[derive(Clone, Copy, Debug, Default, IntoValue, PartialEq, Eq, Serialize, Deserialize)]
+pub enum CompletionStyle {
+    #[default]
+    Normal,
+    Ide,
+}
+
+impl FromStr for CompletionStyle {
+    type Err = &'static str;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+         match s.to_ascii_lowercase().as_str() {
+            "normal" => Ok(Self::Normal),
+            "ide" => Ok(Self::Ide),
+            _ => Err("'normal' or 'ide'"),
+        }
+    }
+}
+
+impl UpdateFromValue for CompletionStyle {
     fn update(&mut self, value: &Value, path: &mut ConfigPath, errors: &mut ConfigErrors) {
         config_update_string_enum(self, value, path, errors)
     }
@@ -108,6 +134,8 @@ pub struct CompletionConfig {
     pub algorithm: CompletionAlgorithm,
     pub external: ExternalCompleterConfig,
     pub use_ls_colors: bool,
+    pub type_to_complete: bool,
+    pub style: CompletionStyle,
 }
 
 impl Default for CompletionConfig {
@@ -120,6 +148,8 @@ impl Default for CompletionConfig {
             algorithm: CompletionAlgorithm::default(),
             external: ExternalCompleterConfig::default(),
             use_ls_colors: true,
+            type_to_complete: false,
+            style: CompletionStyle::default(),
         }
     }
 }
@@ -146,6 +176,8 @@ impl UpdateFromValue for CompletionConfig {
                 "case_sensitive" => self.case_sensitive.update(val, path, errors),
                 "external" => self.external.update(val, path, errors),
                 "use_ls_colors" => self.use_ls_colors.update(val, path, errors),
+                "type_to_complete" => self.type_to_complete.update(val, path, errors),
+                "style" => self.style.update(val, path, errors),
                 _ => errors.unknown_option(path, val),
             }
         }
