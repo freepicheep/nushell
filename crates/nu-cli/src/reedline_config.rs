@@ -7,6 +7,7 @@ use nu_parser::parse;
 use nu_protocol::{
     Config, EditBindings, FromValue, ParsedKeybinding, ParsedMenu, PipelineData, Record,
     ShellError, Span, Type, Value,
+    config::CompletionStyle,
     debugger::WithoutDebug,
     engine::{EngineState, Stack, StateWorkingSet},
     extract_value,
@@ -642,13 +643,18 @@ pub(crate) fn add_description_menu(
     Ok(line_editor.with_menu(completer))
 }
 
-fn add_menu_keybindings(keybindings: &mut Keybindings) {
+fn add_menu_keybindings(keybindings: &mut Keybindings, config: &Config) {
+    let completion_menu = match config.completions.style {
+        CompletionStyle::Normal => "completion_menu",
+        CompletionStyle::Ide => "ide_completion_menu",
+    };
+
     // Completer menu keybindings
     keybindings.add_binding(
         KeyModifiers::NONE,
         KeyCode::Tab,
         ReedlineEvent::UntilFound(vec![
-            ReedlineEvent::Menu("completion_menu".to_string()),
+            ReedlineEvent::Menu(completion_menu.to_string()),
             ReedlineEvent::MenuNext,
             ReedlineEvent::Edit(vec![EditCommand::Complete]),
         ]),
@@ -722,11 +728,11 @@ pub(crate) fn create_keybindings(config: &Config) -> Result<KeybindingsMode, She
 
     match config.edit_mode {
         EditBindings::Emacs => {
-            add_menu_keybindings(&mut emacs_keybindings);
+            add_menu_keybindings(&mut emacs_keybindings, config);
         }
         EditBindings::Vi => {
-            add_menu_keybindings(&mut insert_keybindings);
-            add_menu_keybindings(&mut normal_keybindings);
+            add_menu_keybindings(&mut insert_keybindings, config);
+            add_menu_keybindings(&mut normal_keybindings, config);
         }
     }
     for keybinding in parsed_keybindings {
