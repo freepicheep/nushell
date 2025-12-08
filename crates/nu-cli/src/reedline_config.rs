@@ -131,9 +131,14 @@ pub(crate) fn add_menus(
     }
 
     // Checking if the default menus have been added from the config file
+    let mut ide_completion_menu = DEFAULT_IDE_COMPLETION_MENU.to_string();
+    if config.completions.type_to_complete {
+        ide_completion_menu = ide_completion_menu.replace("marker: \"| \"", "marker: \"\"");
+    }
+
     let default_menus = [
         ("completion_menu", DEFAULT_COMPLETION_MENU),
-        ("ide_completion_menu", DEFAULT_IDE_COMPLETION_MENU),
+        ("ide_completion_menu", ide_completion_menu.as_str()),
         ("history_menu", DEFAULT_HISTORY_MENU),
         ("help_menu", DEFAULT_HELP_MENU),
     ];
@@ -653,13 +658,18 @@ pub(crate) fn add_description_menu(
     Ok(line_editor.with_menu(completer))
 }
 
-fn add_menu_keybindings(keybindings: &mut Keybindings) {
+fn add_menu_keybindings(keybindings: &mut Keybindings, config: &Config) {
+    let completion_menu = match config.completions.style {
+        CompletionStyle::Normal => "completion_menu",
+        CompletionStyle::Ide => "ide_completion_menu",
+    };
+
     // Completer menu keybindings
     keybindings.add_binding(
         KeyModifiers::NONE,
         KeyCode::Tab,
         ReedlineEvent::UntilFound(vec![
-            ReedlineEvent::Menu("completion_menu".to_string()),
+            ReedlineEvent::Menu(completion_menu.to_string()),
             ReedlineEvent::MenuNext,
             ReedlineEvent::Edit(vec![EditCommand::Complete]),
         ]),
@@ -733,11 +743,11 @@ pub(crate) fn create_keybindings(config: &Config) -> Result<KeybindingsMode, She
 
     match config.edit_mode {
         EditBindings::Emacs => {
-            add_menu_keybindings(&mut emacs_keybindings);
+            add_menu_keybindings(&mut emacs_keybindings, config);
         }
         EditBindings::Vi => {
-            add_menu_keybindings(&mut insert_keybindings);
-            add_menu_keybindings(&mut normal_keybindings);
+            add_menu_keybindings(&mut insert_keybindings, config);
+            add_menu_keybindings(&mut normal_keybindings, config);
         }
     }
     for keybinding in parsed_keybindings {
