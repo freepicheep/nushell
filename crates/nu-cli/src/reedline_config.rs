@@ -191,14 +191,9 @@ pub(crate) fn add_menus(
         }
     }
 
-    let completion_style = &config.completions.style;
     line_editor = line_editor.with_autocompletion(
         config.completions.type_to_complete,
-        match completion_style {
-            CompletionStyle::Normal => "completion_menu",
-            CompletionStyle::Ide => "ide_completion_menu",
-        }
-        .into(),
+        "ide_completion_menu".into(),
     );
 
     Ok(line_editor)
@@ -659,6 +654,16 @@ pub(crate) fn add_description_menu(
 }
 
 fn add_menu_keybindings(keybindings: &mut Keybindings, config: &Config) {
+    // Keybindings to complete with the arrow key
+    keybindings.add_binding(
+        KeyModifiers::NONE,
+        KeyCode::Right,
+        ReedlineEvent::UntilFound(vec![
+            ReedlineEvent::HistoryHintComplete,
+            ReedlineEvent::MenuRight,
+            ReedlineEvent::Edit(vec![EditCommand::MoveRight { select: false }]),
+        ]),
+    );
     let completion_menu = match config.completions.style {
         CompletionStyle::Normal => "completion_menu",
         CompletionStyle::Ide => "ide_completion_menu",
