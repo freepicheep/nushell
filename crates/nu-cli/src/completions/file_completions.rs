@@ -65,7 +65,20 @@ impl Completer for FileCompletion {
         let mut non_hidden: Vec<SemanticSuggestion> = vec![];
 
         for item in items.into_iter() {
-            let item_path = Path::new(&item.suggestion.value);
+            let path = &item.suggestion.value;
+            let trimmed = path.trim_end_matches(|c| c == '/' || c == '\\');
+            if trimmed == "."
+                || trimmed == ".."
+                || trimmed.ends_with("/.")
+                || trimmed.ends_with("\\.")
+                || trimmed.ends_with("/..")
+                || trimmed.ends_with("\\..")
+            {
+                hidden.push(item);
+                continue;
+            }
+
+            let item_path = Path::new(path);
 
             if let Some(value) = item_path.file_name()
                 && let Some(value) = value.to_str()
@@ -74,6 +87,14 @@ impl Completer for FileCompletion {
                     hidden.push(item);
                 } else {
                     non_hidden.push(item);
+                }
+            } else if let Some(component) = item_path.components().last() {
+                // If the path ends in . or .., we want to show it as a hidden path
+                if matches!(
+                    component,
+                    std::path::Component::CurDir | std::path::Component::ParentDir
+                ) {
+                    hidden.push(item);
                 }
             }
         }

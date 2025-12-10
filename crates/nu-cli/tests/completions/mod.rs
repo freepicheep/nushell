@@ -1161,6 +1161,8 @@ fn file_completions() {
         folder(dir.join("test_a")),
         file(dir.join("test_a_symlink")),
         folder(dir.join("test_b")),
+        folder(dir.join(".")),
+        folder(dir.join("..")),
         file(dir.join(".hidden_file")),
         folder(dir.join(".hidden_folder")),
     ];
@@ -1195,6 +1197,8 @@ fn file_completions() {
         folder(dir.join("test_a")),
         file(dir.join("test_a_symlink")),
         folder(dir.join("test_b")),
+        folder(dir.join(".")),
+        folder(dir.join("..")),
         file(dir.join(".hidden_file")),
         folder(dir.join(".hidden_folder")),
     ];
@@ -1221,7 +1225,11 @@ fn file_completions() {
     let suggestions = completer.complete(&target_dir, target_dir.len());
 
     // Create the expected values
-    let expected_paths = [file(dir.join("another").join("newfile"))];
+    let expected_paths = [
+        file(dir.join("another").join("newfile")),
+        folder(dir.join("another").join(".")),
+        folder(dir.join("another").join("..")),
+    ];
 
     // Match the results
     match_suggestions_by_string(&expected_paths, &suggestions);
@@ -1230,7 +1238,11 @@ fn file_completions() {
     let target_dir = format!("ls {}", file(dir.join(".hidden_folder").join(".")));
     let suggestions = completer.complete(&target_dir, target_dir.len());
 
-    let expected_paths = [file(dir.join(".hidden_folder").join(".hidden_subfile"))];
+    let expected_paths = [
+        folder(dir.join(".hidden_folder").join(".")),
+        folder(dir.join(".hidden_folder").join("..")),
+        file(dir.join(".hidden_folder").join(".hidden_subfile")),
+    ];
 
     #[cfg(windows)]
     {
@@ -1279,6 +1291,8 @@ fn custom_command_rest_any_args_file_completions() {
         folder(dir.join("test_a")),
         file(dir.join("test_a_symlink")),
         folder(dir.join("test_b")),
+        folder(dir.join(".")),
+        folder(dir.join("..")),
         file(dir.join(".hidden_file")),
         folder(dir.join(".hidden_folder")),
     ];
@@ -1299,6 +1313,8 @@ fn custom_command_rest_any_args_file_completions() {
         folder(dir.join("test_a")),
         file(dir.join("test_a_symlink")),
         folder(dir.join("test_b")),
+        folder(dir.join(".")),
+        folder(dir.join("..")),
         file(dir.join(".hidden_file")),
         folder(dir.join(".hidden_folder")),
     ];
@@ -1311,7 +1327,11 @@ fn custom_command_rest_any_args_file_completions() {
     let suggestions = completer.complete(&target_dir, target_dir.len());
 
     // Create the expected values
-    let expected_paths = [file(dir.join("another").join("newfile"))];
+    let expected_paths = [
+        file(dir.join("another").join("newfile")),
+        folder(dir.join("another").join(".")),
+        folder(dir.join("another").join("..")),
+    ];
 
     // Match the results
     match_suggestions_by_string(&expected_paths, &suggestions);
@@ -1320,7 +1340,11 @@ fn custom_command_rest_any_args_file_completions() {
     let target_dir = format!("list {}", file(dir.join(".hidden_folder").join(".")));
     let suggestions = completer.complete(&target_dir, target_dir.len());
 
-    let expected_paths = [file(dir.join(".hidden_folder").join(".hidden_subfile"))];
+    let expected_paths = [
+        folder(dir.join(".hidden_folder").join(".")),
+        folder(dir.join(".hidden_folder").join("..")),
+        file(dir.join(".hidden_folder").join(".hidden_subfile")),
+    ];
 
     // Match the results
     match_suggestions_by_string(&expected_paths, &suggestions);
@@ -1621,6 +1645,9 @@ fn command_ls_with_filecompletion() {
         "test_a\\",
         "test_a_symlink",
         "test_b\\",
+        "~",
+        ".\\",
+        "..\\",
         ".hidden_file",
         ".hidden_folder\\",
     ];
@@ -1633,6 +1660,9 @@ fn command_ls_with_filecompletion() {
         "test_a/",
         "test_a_symlink",
         "test_b/",
+        "~",
+        "./",
+        "../",
         ".hidden_file",
         ".hidden_folder/",
     ];
@@ -1665,6 +1695,9 @@ fn command_open_with_filecompletion() {
         "test_a\\",
         "test_a_symlink",
         "test_b\\",
+        "~",
+        ".\\",
+        "..\\",
         ".hidden_file",
         ".hidden_folder\\",
     ];
@@ -1677,6 +1710,9 @@ fn command_open_with_filecompletion() {
         "test_a/",
         "test_a_symlink",
         "test_b/",
+        "~",
+        "./",
+        "../",
         ".hidden_file",
         ".hidden_folder/",
     ];
@@ -1709,6 +1745,9 @@ fn command_rm_with_globcompletion() {
         "test_a\\",
         "test_a_symlink",
         "test_b\\",
+        "~",
+        ".\\",
+        "..\\",
         ".hidden_file",
         ".hidden_folder\\",
     ];
@@ -1721,6 +1760,9 @@ fn command_rm_with_globcompletion() {
         "test_a/",
         "test_a_symlink",
         "test_b/",
+        "~",
+        "./",
+        "../",
         ".hidden_file",
         ".hidden_folder/",
     ];
@@ -1746,6 +1788,9 @@ fn command_cp_with_globcompletion() {
         "test_a\\",
         "test_a_symlink",
         "test_b\\",
+        "~",
+        ".\\",
+        "..\\",
         ".hidden_file",
         ".hidden_folder\\",
     ];
@@ -1758,6 +1803,9 @@ fn command_cp_with_globcompletion() {
         "test_a/",
         "test_a_symlink",
         "test_b/",
+        "~",
+        "./",
+        "../",
         ".hidden_file",
         ".hidden_folder/",
     ];
@@ -1783,6 +1831,9 @@ fn command_save_with_filecompletion() {
         "test_a\\",
         "test_a_symlink",
         "test_b\\",
+        "~",
+        ".\\",
+        "..\\",
         ".hidden_file",
         ".hidden_folder\\",
     ];
@@ -1795,6 +1846,9 @@ fn command_save_with_filecompletion() {
         "test_a/",
         "test_a_symlink",
         "test_b/",
+        "~",
+        "./",
+        "../",
         ".hidden_file",
         ".hidden_folder/",
     ];
@@ -1820,6 +1874,9 @@ fn command_touch_with_filecompletion() {
         "test_a\\",
         "test_a_symlink",
         "test_b\\",
+        "~",
+        ".\\",
+        "..\\",
         ".hidden_file",
         ".hidden_folder\\",
     ];
@@ -1832,6 +1889,9 @@ fn command_touch_with_filecompletion() {
         "test_a/",
         "test_a_symlink",
         "test_b/",
+        "~",
+        "./",
+        "../",
         ".hidden_file",
         ".hidden_folder/",
     ];
@@ -1857,6 +1917,9 @@ fn command_watch_with_filecompletion() {
         "test_a\\",
         "test_a_symlink",
         "test_b\\",
+        "~",
+        ".\\",
+        "..\\",
         ".hidden_file",
         ".hidden_folder\\",
     ];
@@ -1869,6 +1932,9 @@ fn command_watch_with_filecompletion() {
         "test_a/",
         "test_a_symlink",
         "test_b/",
+        "~",
+        "./",
+        "../",
         ".hidden_file",
         ".hidden_folder/",
     ];
@@ -2615,6 +2681,9 @@ fn unknown_command_completion() {
         "test_a\\",
         "test_a_symlink",
         "test_b\\",
+        "~",
+        ".\\",
+        "..\\",
         ".hidden_file",
         ".hidden_folder\\",
     ];
@@ -2627,6 +2696,9 @@ fn unknown_command_completion() {
         "test_a/",
         "test_a_symlink",
         "test_b/",
+        "~",
+        "./",
+        "../",
         ".hidden_file",
         ".hidden_folder/",
     ];
@@ -2651,6 +2723,9 @@ fn filecompletions_triggers_after_cursor() {
         "test_a\\",
         "test_a_symlink",
         "test_b\\",
+        "~",
+        ".\\",
+        "..\\",
         ".hidden_file",
         ".hidden_folder\\",
     ];
@@ -2663,6 +2738,9 @@ fn filecompletions_triggers_after_cursor() {
         "test_a/",
         "test_a_symlink",
         "test_b/",
+        "~",
+        "./",
+        "../",
         ".hidden_file",
         ".hidden_folder/",
     ];

@@ -76,6 +76,25 @@ fn complete_rec(
             path.push(part);
         }
 
+        // Add special directory entries . and .. since read_dir() doesn't return them.
+        // These are virtual filesystem entries that always exist in every directory.
+        // Only add them when we're completing the final component (not traversing further).
+        if !has_more && path.is_dir() {
+            // Add "." entry (current directory)
+            let mut dot_built = built.clone();
+            dot_built.parts.push(".".to_string());
+            dot_built.isdir = true;
+            matcher.add(".".to_string(), dot_built);
+
+            // Add ".." entry (parent directory) - always valid except at filesystem root
+            if path.parent().is_some() {
+                let mut dotdot_built = built.clone();
+                dotdot_built.parts.push("..".to_string());
+                dotdot_built.isdir = true;
+                matcher.add("..".to_string(), dotdot_built);
+            }
+        }
+
         let Ok(result) = path.read_dir() else {
             continue;
         };
@@ -304,6 +323,21 @@ pub fn complete_item(
             is_dir,
         }
     })
+    // Add ~ as a completion option if the partial is empty or matches ~
+    .chain(
+        if (cleaned_partial.is_empty() || "~".starts_with(&cleaned_partial))
+            && home_dir().is_some()
+        {
+            Some(FileSuggestion {
+                span,
+                path: "~".to_string(),
+                style: None,
+                is_dir: true,
+            })
+        } else {
+            None
+        },
+    )
     .collect()
 }
 
