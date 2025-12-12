@@ -323,21 +323,6 @@ pub fn complete_item(
             is_dir,
         }
     })
-    // Add ~ as a completion option if the partial is empty or matches ~
-    .chain(
-        if (cleaned_partial.is_empty() || "~".starts_with(&cleaned_partial))
-            && home_dir().is_some()
-        {
-            Some(FileSuggestion {
-                span,
-                path: "~".to_string(),
-                style: None,
-                is_dir: true,
-            })
-        } else {
-            None
-        },
-    )
     .collect()
 }
 
