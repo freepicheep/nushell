@@ -7,7 +7,6 @@ use nu_parser::parse;
 use nu_protocol::{
     Config, EditBindings, FromValue, ParsedKeybinding, ParsedMenu, PipelineData, Record,
     ShellError, Span, Type, Value,
-    config::CompletionStyle,
     debugger::WithoutDebug,
     engine::{EngineState, Stack, StateWorkingSet},
     extract_value,
@@ -193,7 +192,7 @@ pub(crate) fn add_menus(
 
     line_editor = line_editor.with_autocompletion(
         config.completions.type_to_complete,
-        "ide_completion_menu".into(),
+        "completion_menu".into(),
     );
 
     Ok(line_editor)
@@ -653,7 +652,7 @@ pub(crate) fn add_description_menu(
     Ok(line_editor.with_menu(completer))
 }
 
-fn add_menu_keybindings(keybindings: &mut Keybindings, config: &Config) {
+fn add_menu_keybindings(keybindings: &mut Keybindings, _config: &Config) {
     // Keybindings to complete with the arrow key
     keybindings.add_binding(
         KeyModifiers::NONE,
@@ -664,17 +663,12 @@ fn add_menu_keybindings(keybindings: &mut Keybindings, config: &Config) {
             ReedlineEvent::Edit(vec![EditCommand::MoveRight { select: false }]),
         ]),
     );
-    let completion_menu = match config.completions.style {
-        CompletionStyle::Normal => "completion_menu",
-        CompletionStyle::Ide => "ide_completion_menu",
-    };
-
     // Completer menu keybindings
     keybindings.add_binding(
         KeyModifiers::NONE,
         KeyCode::Tab,
         ReedlineEvent::UntilFound(vec![
-            ReedlineEvent::Menu(completion_menu.to_string()),
+            ReedlineEvent::Menu("completion_menu".to_string()),
             ReedlineEvent::MenuNext,
             ReedlineEvent::Edit(vec![EditCommand::Complete]),
         ]),
