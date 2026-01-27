@@ -420,7 +420,7 @@ fn loop_iteration(ctx: LoopContext) -> (bool, Stack, Reedline) {
     let style_computer = StyleComputer::from_config(engine_state, &stack_arc);
 
     start_time = std::time::Instant::now();
-    line_editor = if config.use_ansi_coloring.get(engine_state) {
+    line_editor = if config.use_ansi_coloring.get(engine_state) && config.show_hints {
         line_editor.with_hinter(Box::new({
             // As of Nov 2022, "hints" color_config closures only get `null` passed in.
             let style = style_computer.compute("hints", &Value::nothing(Span::unknown()));
@@ -1058,6 +1058,12 @@ fn run_shell_integration_osc7(
     if let Ok(path) = engine_state.cwd_as_string(Some(stack)) {
         let start_time = Instant::now();
 
+        let path = if cfg!(windows) {
+            path.replace('\\', "/")
+        } else {
+            path
+        };
+
         // Otherwise, communicate the path as OSC 7 (often used for spawning new tabs in the same dir)
         run_ansi_sequence(&format!(
             "\x1b]7;file://{}{}{}\x1b\\",
@@ -1083,10 +1089,7 @@ fn run_shell_integration_osc9_9(engine_state: &EngineState, stack: &mut Stack, u
 
         // Otherwise, communicate the path as OSC 9;9 from ConEmu (often used for spawning new tabs in the same dir)
         // This is helpful in Windows Terminal with Duplicate Tab
-        run_ansi_sequence(&format!(
-            "\x1b]9;9;{}\x1b\\",
-            percent_encoding::utf8_percent_encode(&path, percent_encoding::CONTROLS)
-        ));
+        run_ansi_sequence(&format!("\x1b]9;9;{}\x1b\\", path));
 
         perf!(
             "communicate path to terminal with osc9;9",

@@ -5,24 +5,22 @@ mod experimental_options;
 mod ide;
 mod logger;
 mod run;
-#[cfg(not(feature = "mcp"))]
 mod signals;
 #[cfg(unix)]
 mod terminal;
 mod test_bins;
 
 use crate::{
-    command::parse_commandline_args,
+    command::parse_cli_args_from_env,
     config_files::set_config_path,
     logger::{configure, logger},
 };
-use command::gather_commandline_args;
 use log::{Level, trace};
 use miette::Result;
 use nu_cli::gather_parent_env_vars;
 use nu_engine::{convert_env_values, exit::cleanup_exit};
 use nu_lsp::LanguageServer;
-use nu_path::canonicalize_with;
+use nu_path::absolute_with;
 use nu_protocol::{
     ByteStream, Config, IntoValue, PipelineData, ShellError, Span, Spanned, Type, Value,
     engine::{EngineState, Stack},
@@ -31,9 +29,13 @@ use nu_protocol::{
 use nu_std::load_standard_library;
 use nu_utils::perf;
 use run::{run_commands, run_file, run_repl};
-#[cfg(not(feature = "mcp"))]
 use signals::ctrlc_protection;
-use std::{borrow::Cow, path::PathBuf, str::FromStr, sync::Arc};
+use std::{
+    borrow::Cow,
+    path::{PathBuf, absolute},
+    str::FromStr,
+    sync::Arc,
+};
 
 /// Get the directory where the Nushell executable is located.
 fn current_exe_directory() -> PathBuf {
@@ -66,16 +68,17 @@ fn main() -> Result<()> {
         miette_hook(x);
     }));
 
-    let mut engine_state = EngineState::new();
+    let engine_state = EngineState::new();
 
     // Parse commandline args very early and load experimental options to allow loading different
     // commands based on experimental options.
-    let (args_to_nushell, script_name, args_to_script) = gather_commandline_args();
-    let parsed_nu_cli_args = parse_commandline_args(&args_to_nushell.join(" "), &mut engine_state)
-        .unwrap_or_else(|err| {
-            report_shell_error(None, &engine_state, &err);
-            std::process::exit(1)
-        });
+    let parsed = parse_cli_args_from_env().unwrap_or_else(|err| {
+        report_shell_error(None, &engine_state, &err.into());
+        std::process::exit(1)
+    });
+    let parsed_nu_cli_args = parsed.nu;
+    let script_name = parsed.script_name;
+    let args_to_script = parsed.args_to_script;
 
     experimental_options::load(&engine_state, &parsed_nu_cli_args, !script_name.is_empty());
 
@@ -102,9 +105,13 @@ fn main() -> Result<()> {
         report_shell_error(None, &engine_state, &err);
     }
 
-    // TODO: make this conditional in the future
+    #[cfg(feature = "mcp")]
+    let handle_ctrlc = !parsed_nu_cli_args.mcp;
     #[cfg(not(feature = "mcp"))]
-    ctrlc_protection(&mut engine_state);
+    let handle_ctrlc = true;
+    if handle_ctrlc {
+        ctrlc_protection(&mut engine_state);
+    }
 
     #[cfg(all(feature = "rustls-tls", feature = "network"))]
     nu_command::tls::CRYPTO_PROVIDER.default();
@@ -118,7 +125,7 @@ fn main() -> Result<()> {
         && !xdg_config_home.is_empty()
     {
         if nushell_config_path
-            != canonicalize_with(&xdg_config_home, &init_cwd)
+            != absolute_with(&xdg_config_home, &init_cwd)
                 .unwrap_or(PathBuf::from(&xdg_config_home))
                 .join("nushell")
         {
@@ -131,7 +138,7 @@ fn main() -> Result<()> {
                 },
             );
         } else if let Some(old_config) = dirs::config_dir()
-            .and_then(|p| p.canonicalize().ok())
+            .and_then(|p| absolute(p).ok())
             .map(|p| p.join("nushell"))
         {
             let xdg_config_empty = nushell_config_path
@@ -425,12 +432,13 @@ fn main() -> Result<()> {
 
         let mut working_set = StateWorkingSet::new(&engine_state);
         for plugin_filename in plugins {
-            // Make sure the plugin filenames are canonicalized
-            let filename = canonicalize_with(&plugin_filename.item, &init_cwd)
+            // Make sure the plugin filenames are absolute
+            let filename = absolute_with(&plugin_filename.item, &init_cwd)
                 .map_err(|err| {
-                    nu_protocol::shell_error::io::IoError::new(
+                    nu_protocol::shell_error::io::IoError::new_internal_with_path(
                         err,
-                        plugin_filename.span,
+                        "Could not resolve plugin path",
+                        nu_protocol::location!(),
                         PathBuf::from(&plugin_filename.item),
                     )
                 })

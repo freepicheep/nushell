@@ -9,7 +9,7 @@ use nu_protocol::{
     debugger::WithoutDebug,
     engine::{Closure, EngineState, Stack, StateWorkingSet},
 };
-use nu_utils::SharedCow;
+use nu_utils::{SharedCow, strip_ansi_string_unlikely};
 use reedline::Suggestion;
 use std::{collections::HashMap, sync::Arc};
 
@@ -56,6 +56,11 @@ fn map_value_completions<'a>(
                         value_type = value.get_type();
                         if let Ok(val_str) = value.coerce_string() {
                             suggestion.value = val_str;
+                        }
+                    }
+                    "display_override" => {
+                        if let Ok(display_str) = value.coerce_string() {
+                            suggestion.display_override = Some(display_str);
                         }
                     }
                     "description" => {
@@ -181,6 +186,7 @@ impl<T: Completer> Completer for CustomCompletion<T> {
 
         let mut completion_options = orig_options.clone();
         let mut should_sort = true;
+        let mut should_filter = true;
 
         // Parse result
         let suggestions = match result.and_then(|data| data.into_value(span)) {
@@ -202,8 +208,18 @@ impl<T: Completer> Completer for CustomCompletion<T> {
                     let options = val.get("options");
 
                     if let Some(Value::Record { val: options, .. }) = &options {
+                        if let Some(filter) =
+                            options.get("filter").and_then(|val| val.as_bool().ok())
+                        {
+                            should_filter = filter;
+                        }
+
                         if let Some(sort) = options.get("sort").and_then(|val| val.as_bool().ok()) {
                             should_sort = sort;
+
+                            if should_sort && !should_filter {
+                                log::warn!("Sorting won't happen because filtering is disabled.")
+                            };
                         }
 
                         if let Some(case_sensitive) = options
@@ -212,6 +228,7 @@ impl<T: Completer> Completer for CustomCompletion<T> {
                         {
                             completion_options.case_sensitive = case_sensitive;
                         }
+
                         let positional =
                             options.get("positional").and_then(|val| val.as_bool().ok());
                         if positional.is_some() {
@@ -265,10 +282,17 @@ impl<T: Completer> Completer for CustomCompletion<T> {
             }
         };
 
-        let mut matcher = NuMatcher::new(prefix, &completion_options, should_sort);
+        if !should_filter {
+            return suggestions;
+        }
+
+        let mut matcher = NuMatcher::new(prefix.as_ref(), &completion_options, should_sort);
 
         for sugg in suggestions {
-            matcher.add_semantic_suggestion(sugg);
+            matcher.add(
+                strip_ansi_string_unlikely(sugg.suggestion.display_value().to_string()),
+                sugg,
+            );
         }
         matcher.suggestion_results()
     }

@@ -284,6 +284,18 @@ fn customcompletions_no_sort() {
     );
 }
 
+#[test]
+fn customcompletions_no_filter() {
+    let mut completer = custom_completer_with_options(
+        "",
+        r#"filter: false"#,
+        &["zzzfoo", "foo", "not matched", "abcfoo"],
+    );
+    let suggestions = completer.complete("my-command foo", 14);
+    let expected_items = vec!["zzzfoo", "foo", "not matched", "abcfoo"];
+    match_suggestions(&expected_items, &suggestions);
+}
+
 #[rstest]
 #[case::happy("{ start: 1, end: 14 }", (7, 20))]
 #[case::no_start("{ end: 14 }", (17, 20))]
@@ -308,6 +320,29 @@ fn custom_completions_override_span(
     match_suggestions(&vec!["foobarbaz"], &suggestions);
     let (start, end) = expected_span;
     assert_eq!(Span::new(start, end), suggestions[0].span);
+}
+
+#[test]
+fn custom_completions_override_display_value() {
+    let (_, _, mut engine, mut stack) = new_engine();
+    let command = r#"
+        def comp [] {
+            {
+                completions: [
+                    { value: first, display_override: "\u{1b}[2mansi\u{1b}[3mrocks" },
+                    { value: second, display_override: "sir\u{1b}[1mlancelot" },
+                    { value: nonmatching, display_override: "asdf" },
+                ],
+                options: { completion_algorithm: "substring" }
+            }
+        }
+        def my-command [arg: string@comp] {}"#;
+    assert!(support::merge_input(command.as_bytes(), &mut engine, &mut stack).is_ok());
+
+    let mut completer = NuCompleter::new(Arc::new(engine), Arc::new(stack));
+    let completion_str = "my-command sir";
+    let suggestions = completer.complete(completion_str, completion_str.len());
+    match_suggestions(&vec!["first", "second"], &suggestions);
 }
 
 #[rstest]
@@ -963,6 +998,14 @@ fn external_completer_override_span(
         ..Default::default()
     }];
     assert_eq!(expected, suggestions);
+}
+
+#[test]
+fn external_completer_override_display_value() {
+    let block = "{|spans| [{ value: foo, display_override: blah }] }";
+    let suggestions = run_external_completion(block, "extcommand irrelevant");
+    assert_eq!(1, suggestions.len());
+    assert_eq!("blah", suggestions[0].display_value());
 }
 
 /// Fallback to external completions for flags of `sudo`
@@ -1982,7 +2025,7 @@ fn flag_completions() {
 
     // https://github.com/nushell/nushell/issues/16375
     let suggestions = completer.complete("table -", 7);
-    assert_eq!(20, suggestions.len());
+    assert_eq!(22, suggestions.len());
 }
 
 #[test]
@@ -2417,6 +2460,97 @@ fn local_variable_completion() {
     let suggestions = completer.complete(completion_str, completion_str.len());
     let expected: Vec<_> = vec!["$foo"];
     match_suggestions(&expected, &suggestions);
+}
+
+#[test]
+fn unlet_variable_current_stack_not_in_completions() {
+    // Test that variables deleted with `unlet` in the current stack
+    // are not available for tab completion
+    let (_, _, mut engine, mut stack) = new_engine();
+
+    // Define a variable
+    let command = b"let myvar = 123";
+    assert!(support::merge_input(command, &mut engine, &mut stack).is_ok());
+
+    // Verify myvar IS available before unlet
+    let mut completer = NuCompleter::new(Arc::new(engine.clone()), Arc::new(stack.clone()));
+    let suggestions = completer.complete("$my", 3);
+    assert!(
+        suggestions.iter().any(|s| s.value == "$myvar"),
+        "Expected $myvar to be in completions before unlet"
+    );
+
+    // Unlet the variable
+    let command = b"unlet $myvar";
+    assert!(support::merge_input(command, &mut engine, &mut stack).is_ok());
+
+    // Verify myvar is NOT available after unlet
+    let mut completer = NuCompleter::new(Arc::new(engine), Arc::new(stack));
+    let suggestions = completer.complete("$my", 3);
+    assert!(
+        !suggestions.iter().any(|s| s.value == "$myvar"),
+        "Expected $myvar to NOT be in completions after unlet"
+    );
+}
+
+#[test]
+fn unlet_variable_parent_stack_not_in_completions() {
+    use nu_protocol::engine::Stack;
+
+    // Test that variables deleted with `unlet` in the parent stack
+    // are not available for tab completion in a child stack
+    let (_, _, mut engine, mut stack) = new_engine();
+
+    // Define a variable in the parent stack
+    let command = b"let myvar = 123";
+    assert!(support::merge_input(command, &mut engine, &mut stack).is_ok());
+
+    // Unlet the variable (this adds the var_id to stack.deletions)
+    let command = b"unlet $myvar";
+    assert!(support::merge_input(command, &mut engine, &mut stack).is_ok());
+
+    // Create a child stack from the parent
+    let child_stack = Stack::with_parent(Arc::new(stack));
+
+    // Verify myvar is NOT available in child stack completions
+    // (the parent's deletions should be propagated via parent_deletions check)
+    let mut completer = NuCompleter::new(Arc::new(engine), Arc::new(child_stack));
+    let suggestions = completer.complete("$my", 3);
+    assert!(
+        !suggestions.iter().any(|s| s.value == "$myvar"),
+        "Expected $myvar to NOT be in completions in child stack after parent unlet"
+    );
+}
+
+#[test]
+fn unlet_variable_grandparent_stack_not_in_completions() {
+    use nu_protocol::engine::Stack;
+
+    // Test that variables deleted with `unlet` in a grandparent stack
+    // are not available for tab completion in a grandchild stack
+    let (_, _, mut engine, mut stack) = new_engine();
+
+    // Define a variable in the grandparent stack
+    let command = b"let myvar = 123";
+    assert!(support::merge_input(command, &mut engine, &mut stack).is_ok());
+
+    // Unlet the variable in grandparent
+    let command = b"unlet $myvar";
+    assert!(support::merge_input(command, &mut engine, &mut stack).is_ok());
+
+    // Create a child stack (parent level)
+    let child_stack = Stack::with_parent(Arc::new(stack));
+
+    // Create a grandchild stack
+    let grandchild_stack = Stack::with_parent(Arc::new(child_stack));
+
+    // Verify myvar is NOT available in grandchild stack completions
+    let mut completer = NuCompleter::new(Arc::new(engine), Arc::new(grandchild_stack));
+    let suggestions = completer.complete("$my", 3);
+    assert!(
+        !suggestions.iter().any(|s| s.value == "$myvar"),
+        "Expected $myvar to NOT be in completions in grandchild stack after grandparent unlet"
+    );
 }
 
 #[test]

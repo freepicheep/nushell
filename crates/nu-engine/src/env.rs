@@ -1,10 +1,9 @@
 use crate::ClosureEvalOnce;
-use nu_path::canonicalize_with;
+use nu_path::absolute_with;
 use nu_protocol::{
     ShellError, Span, Type, Value, VarId,
     ast::Expr,
-    engine::{Call, EngineState, Stack, StateWorkingSet},
-    shell_error::io::{IoError, IoErrorExt, NotFound},
+    engine::{Call, EngineState, Stack},
 };
 use std::{
     collections::HashMap,
@@ -189,66 +188,6 @@ pub fn env_to_strings(
     Ok(env_vars_str)
 }
 
-/// Returns the current working directory as a String, which is guaranteed to be canonicalized.
-/// Unlike `current_dir_str_const()`, this also considers modifications to the current working directory made on the stack.
-///
-/// Returns an error if $env.PWD doesn't exist, is not a String, or is not an absolute path.
-#[deprecated(since = "0.92.3", note = "please use `EngineState::cwd()` instead")]
-pub fn current_dir_str(engine_state: &EngineState, stack: &Stack) -> Result<String, ShellError> {
-    #[allow(deprecated)]
-    current_dir(engine_state, stack).map(|path| path.to_string_lossy().to_string())
-}
-
-/// Returns the current working directory as a String, which is guaranteed to be canonicalized.
-///
-/// Returns an error if $env.PWD doesn't exist, is not a String, or is not an absolute path.
-#[deprecated(since = "0.92.3", note = "please use `EngineState::cwd()` instead")]
-pub fn current_dir_str_const(working_set: &StateWorkingSet) -> Result<String, ShellError> {
-    #[allow(deprecated)]
-    current_dir_const(working_set).map(|path| path.to_string_lossy().to_string())
-}
-
-/// Returns the current working directory, which is guaranteed to be canonicalized.
-/// Unlike `current_dir_const()`, this also considers modifications to the current working directory made on the stack.
-///
-/// Returns an error if $env.PWD doesn't exist, is not a String, or is not an absolute path.
-#[deprecated(since = "0.92.3", note = "please use `EngineState::cwd()` instead")]
-pub fn current_dir(engine_state: &EngineState, stack: &Stack) -> Result<PathBuf, ShellError> {
-    let cwd = engine_state.cwd(Some(stack))?;
-    // `EngineState::cwd()` always returns absolute path.
-    // We're using `canonicalize_with` instead of `fs::canonicalize()` because
-    // we still need to simplify Windows paths. "." is safe because `cwd` should
-    // be an absolute path already.
-    canonicalize_with(&cwd, ".").map_err(|err| {
-        ShellError::Io(IoError::new_internal_with_path(
-            err.not_found_as(NotFound::Directory),
-            "Could not canonicalize current dir",
-            nu_protocol::location!(),
-            PathBuf::from(cwd),
-        ))
-    })
-}
-
-/// Returns the current working directory, which is guaranteed to be canonicalized.
-///
-/// Returns an error if $env.PWD doesn't exist, is not a String, or is not an absolute path.
-#[deprecated(since = "0.92.3", note = "please use `EngineState::cwd()` instead")]
-pub fn current_dir_const(working_set: &StateWorkingSet) -> Result<PathBuf, ShellError> {
-    let cwd = working_set.permanent_state.cwd(None)?;
-    // `EngineState::cwd()` always returns absolute path.
-    // We're using `canonicalize_with` instead of `fs::canonicalize()` because
-    // we still need to simplify Windows paths. "." is safe because `cwd` should
-    // be an absolute path already.
-    canonicalize_with(&cwd, ".").map_err(|err| {
-        ShellError::Io(IoError::new_internal_with_path(
-            err.not_found_as(NotFound::Directory),
-            "Could not canonicalize current dir",
-            nu_protocol::location!(),
-            PathBuf::from(cwd),
-        ))
-    })
-}
-
 /// Get the contents of path environment variable as a list of strings
 pub fn path_str(
     engine_state: &EngineState,
@@ -324,7 +263,11 @@ pub fn find_in_dirs_env(
     };
 
     let check_dir = |lib_dirs: Option<&Value>| -> Option<PathBuf> {
-        if let Ok(p) = canonicalize_with(filename, &cwd) {
+        fn exists_with<P: AsRef<Path>, Q: AsRef<Path>>(path: P, relative_to: Q) -> Option<PathBuf> {
+            let path = absolute_with(path, relative_to).ok()?;
+            path.exists().then_some(path)
+        }
+        if let Some(p) = exists_with(filename, &cwd) {
             return Some(p);
         }
         let path = Path::new(filename);
@@ -338,8 +281,8 @@ pub fn find_in_dirs_env(
             .iter()
             .map(|lib_dir| -> Option<PathBuf> {
                 let dir = lib_dir.to_path().ok()?;
-                let dir_abs = canonicalize_with(dir, &cwd).ok()?;
-                canonicalize_with(filename, dir_abs).ok()
+                let dir_abs = exists_with(dir, &cwd)?;
+                exists_with(filename, dir_abs)
             })
             .find(Option::is_some)
             .flatten()
