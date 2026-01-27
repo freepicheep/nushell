@@ -129,15 +129,9 @@ pub(crate) fn add_menus(
         )?
     }
 
-    // Checking if the default menus have been added from the config file
-    let mut ide_completion_menu = DEFAULT_IDE_COMPLETION_MENU.to_string();
-    if config.completions.type_to_complete {
-        ide_completion_menu = ide_completion_menu.replace("marker: \"| \"", "marker: \"\"");
-    }
-
     let default_menus = [
         ("completion_menu", DEFAULT_COMPLETION_MENU),
-        ("ide_completion_menu", ide_completion_menu.as_str()),
+        ("ide_completion_menu", DEFAULT_IDE_COMPLETION_MENU),
         ("history_menu", DEFAULT_HISTORY_MENU),
         ("help_menu", DEFAULT_HELP_MENU),
     ];
