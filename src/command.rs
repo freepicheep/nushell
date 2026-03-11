@@ -1,3 +1,4 @@
+use crate::test_bins;
 use lexopt::prelude::*;
 use nu_experimental as experimental_options;
 use nu_parser::escape_for_script_arg;
@@ -11,6 +12,8 @@ const HELP_SECTION_COLOR: &str = "\x1b[32m";
 const HELP_FLAG_COLOR: &str = "\x1b[36m";
 const HELP_TYPE_COLOR: &str = "\x1b[94m";
 const HELP_DESC_COLOR: &str = "\x1b[2;39m";
+#[allow(dead_code)]
+const HELP_SUBCMD_COLOR: &str = "\x1b[96m"; // bright cyan, lighter than flags
 const DEFAULT_COLOR: &str = "\x1b[39m";
 const RESET_COLOR: &str = "\x1b[0m";
 const TABLE_MODE_VALUES: &[&str] = &[
@@ -37,6 +40,7 @@ const TABLE_MODE_VALUES: &[&str] = &[
 const ERROR_STYLE_VALUES: &[&str] = &["fancy", "plain", "short"];
 const LOG_LEVEL_VALUES: &[&str] = &["error", "warn", "info", "debug", "trace"];
 const LOG_TARGET_VALUES: &[&str] = &["stdout", "stderr", "mixed", "file"];
+const MCP_TRANSPORT_VALUES: &[&str] = &["stdio", "http"];
 const TEST_BIN_VALUES: &[&str] = &[
     "echo_env",
     "echo_env_stderr",
@@ -263,17 +267,25 @@ const CLI_FLAGS: &[CliFlag] = &[
         "log-target",
         None,
         ValueHint::String,
-        "set the target for the log to output. stdout, stderr(default), mixed or file",
+        "set the target for the log to output. stdout, stderr(default), mixed or file (requires --log-file)",
         CliCategory::Logging,
         "nu --log-target stdout",
+    ),
+    CliFlag::value(
+        "log-file",
+        None,
+        ValueHint::Path,
+        "specify a custom log file path (requires --log-target file and --log-level <level>)",
+        CliCategory::Logging,
+        "nu --log-target file --log-file ~/.local/share/nushell/nu.log --log-level info",
     ),
     CliFlag::value(
         "log-include",
         None,
         ValueHint::ListString,
-        "set the Rust module prefixes to include in the log output. default: [nu]",
+        "set the Rust module prefixes to include from the log output",
         CliCategory::Logging,
-        "nu --log-include warn",
+        "nu --log-include info",
     ),
     CliFlag::value(
         "log-exclude",
@@ -294,7 +306,7 @@ const CLI_FLAGS: &[CliFlag] = &[
         "testbin",
         None,
         ValueHint::String,
-        "run internal test binary",
+        "run an internal test binary (see available bins below)",
         CliCategory::Startup,
         "nu --testbin cococo",
     ),
@@ -378,6 +390,24 @@ const CLI_FLAGS: &[CliFlag] = &[
         CliCategory::Startup,
         "nu --mcp",
     ),
+    #[cfg(feature = "mcp")]
+    CliFlag::value(
+        "mcp-transport",
+        None,
+        ValueHint::String,
+        "transport to use for MCP server (stdio or http)",
+        CliCategory::Startup,
+        "nu --mcp --mcp-transport http",
+    ),
+    #[cfg(feature = "mcp")]
+    CliFlag::value(
+        "mcp-port",
+        None,
+        ValueHint::Int,
+        "port for MCP HTTP transport (default 8080)",
+        CliCategory::Startup,
+        "nu --mcp --mcp-transport http --mcp-port 3000",
+    ),
 ];
 
 // Container for parsed CLI values before conversion to NushellCliArgs.
@@ -399,6 +429,7 @@ struct CliValues {
     env_file: Option<Spanned<String>>,
     log_level: Option<Spanned<String>>,
     log_target: Option<Spanned<String>>,
+    log_file: Option<Spanned<String>>,
     log_include: Option<Vec<Spanned<String>>>,
     log_exclude: Option<Vec<Spanned<String>>>,
     execute: Option<Spanned<String>>,
@@ -415,6 +446,10 @@ struct CliValues {
     experimental_options: Option<Vec<Spanned<String>>>,
     #[cfg(feature = "mcp")]
     mcp: bool,
+    #[cfg(feature = "mcp")]
+    mcp_transport: Option<Spanned<String>>,
+    #[cfg(feature = "mcp")]
+    mcp_port: Option<u16>,
 }
 
 // Error type for CLI parsing with optional help text.
@@ -578,6 +613,10 @@ pub(crate) fn parse_cli_args(args: Vec<OsString>) -> Result<ParsedCli, CliError>
                 )?;
                 cli.log_target = Some(spanned_value(value));
             }
+            Long("log-file") => {
+                let value = parse_string_value(&mut parser, "log-file")?;
+                cli.log_file = Some(spanned_value(value));
+            }
             Long("log-include") => {
                 let values = parse_list_values(&mut parser, "log-include")?;
                 let parsed = parse_log_filters("log-include", values)?;
@@ -665,6 +704,21 @@ pub(crate) fn parse_cli_args(args: Vec<OsString>) -> Result<ParsedCli, CliError>
             }
             #[cfg(feature = "mcp")]
             Long("mcp") => cli.mcp = true,
+            #[cfg(feature = "mcp")]
+            Long("mcp-transport") => {
+                let value = parse_validated_option(
+                    &mut parser,
+                    "mcp-transport",
+                    MCP_TRANSPORT_VALUES,
+                    "mcp transport",
+                )?;
+                cli.mcp_transport = Some(spanned_value(value));
+            }
+            #[cfg(feature = "mcp")]
+            Long("mcp-port") => {
+                let value = parse_port_value(&mut parser, "mcp-port")?;
+                cli.mcp_port = Some(value);
+            }
             Value(value) => {
                 let value = value.string().map_err(|_| {
                     CliError::new("Invalid argument", "argument is not valid unicode")
@@ -707,6 +761,7 @@ pub(crate) fn parse_cli_args(args: Vec<OsString>) -> Result<ParsedCli, CliError>
             env_file: cli.env_file,
             log_level: cli.log_level,
             log_target: cli.log_target,
+            log_file: cli.log_file,
             log_include: cli.log_include,
             log_exclude: cli.log_exclude,
             execute: cli.execute,
@@ -723,6 +778,10 @@ pub(crate) fn parse_cli_args(args: Vec<OsString>) -> Result<ParsedCli, CliError>
             experimental_options: cli.experimental_options,
             #[cfg(feature = "mcp")]
             mcp: cli.mcp,
+            #[cfg(feature = "mcp")]
+            mcp_transport: cli.mcp_transport,
+            #[cfg(feature = "mcp")]
+            mcp_port: cli.mcp_port,
         },
         script_name,
         args_to_script,
@@ -800,6 +859,18 @@ fn parse_int_value(parser: &mut lexopt::Parser, name: &str) -> Result<i64, CliEr
         )
         .with_help("Provide a whole number for this option.")
     })
+}
+
+// Parse and validate a TCP port number.
+fn parse_port_value(parser: &mut lexopt::Parser, name: &str) -> Result<u16, CliError> {
+    let value = parse_int_value(parser, name)?;
+    if !(1..=u16::MAX as i64).contains(&value) {
+        return Err(
+            CliError::new(format!("Invalid value for `--{name}`"), "invalid port")
+                .with_help("Provide a TCP port between 1 and 65535."),
+        );
+    }
+    Ok(value as u16)
 }
 
 // Helper to parse IDE integer options and wrap in Value::int.
@@ -1089,12 +1160,6 @@ fn prevalidate_short_groups_before_lexopt(args: &[OsString]) -> Result<(), CliEr
         }
 
         let mut group = arg.trim_start_matches('-');
-        if group.is_empty() {
-            return Err(CliError::new(
-                "Invalid short flag",
-                "expected a flag after '-'",
-            ));
-        }
 
         let mut inline_value = None;
         if let Some((before, after)) = group.split_once('=') {
@@ -1225,6 +1290,15 @@ fn cli_help_text() -> String {
                 "      {HELP_DESC_COLOR}Example: {RESET_COLOR}{}\n",
                 flag.example
             ));
+
+            // For the --testbin option we augment the static description with a dynamically generated list of the available binaries
+            // and their individual help strings
+            if flag.long == "testbin" {
+                output.push_str(&format!(
+                    "      {HELP_DESC_COLOR}Available test bins:{RESET_COLOR}\n"
+                ));
+                output.push_str(&test_bins::help_list());
+            }
         }
     }
     output
@@ -1279,6 +1353,7 @@ pub(crate) struct NushellCliArgs {
     pub(crate) env_file: Option<Spanned<String>>,
     pub(crate) log_level: Option<Spanned<String>>,
     pub(crate) log_target: Option<Spanned<String>>,
+    pub(crate) log_file: Option<Spanned<String>>,
     pub(crate) log_include: Option<Vec<Spanned<String>>>,
     pub(crate) log_exclude: Option<Vec<Spanned<String>>>,
     pub(crate) execute: Option<Spanned<String>>,
@@ -1295,4 +1370,65 @@ pub(crate) struct NushellCliArgs {
     pub(crate) experimental_options: Option<Vec<Spanned<String>>>,
     #[cfg(feature = "mcp")]
     pub(crate) mcp: bool,
+    #[cfg(feature = "mcp")]
+    pub(crate) mcp_transport: Option<Spanned<String>>,
+    #[cfg(feature = "mcp")]
+    pub(crate) mcp_port: Option<u16>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::test_bins;
+    use std::ffi::OsString;
+
+    #[test]
+    fn cli_help_includes_testbin_list() {
+        let help = cli_help_text();
+        // the description for the testbin flag should be present
+        assert!(help.contains("--testbin"));
+
+        // there should be an entry for at least one known bin
+        assert!(help.contains("echo_env"));
+
+        // ensure the dynamic list from test_bins::help_list is embedded
+        let list = test_bins::help_list();
+        assert!(help.contains(list.trim()));
+
+        // colored subcommand names should use the new bright-cyan code
+        assert!(help.contains(HELP_SUBCMD_COLOR));
+    }
+
+    #[test]
+    fn test_log_file_parsing() {
+        let args = vec![
+            OsString::from("nu"),
+            OsString::from("--log-target"),
+            OsString::from("file"),
+            OsString::from("--log-file"),
+            OsString::from("/tmp/test.log"),
+            OsString::from("--log-level"),
+            OsString::from("info"),
+        ];
+
+        let result = parse_cli_args(args);
+        assert!(result.is_ok());
+
+        let parsed = result.unwrap();
+        assert_eq!(parsed.nu.log_target.as_ref().unwrap().item, "file");
+        assert_eq!(parsed.nu.log_file.as_ref().unwrap().item, "/tmp/test.log");
+        assert_eq!(parsed.nu.log_level.as_ref().unwrap().item, "info");
+    }
+
+    #[test]
+    fn test_log_target_validation() {
+        let args = vec![
+            OsString::from("nu"),
+            OsString::from("--log-target"),
+            OsString::from("invalid"),
+        ];
+
+        let result = parse_cli_args(args);
+        assert!(result.is_err());
+    }
 }

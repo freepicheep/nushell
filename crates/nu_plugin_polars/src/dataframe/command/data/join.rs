@@ -30,22 +30,23 @@ impl PluginCommand for LazyJoin {
 
     fn signature(&self) -> Signature {
         Signature::build(self.name())
-            .required("other", SyntaxShape::Any, "LazyFrame to join with")
-            .optional("left_on", SyntaxShape::Any, "Left column(s) to join on")
-            .optional("right_on", SyntaxShape::Any, "Right column(s) to join on")
+            .required("other", SyntaxShape::Any, "LazyFrame to join with.")
+            .optional("left_on", SyntaxShape::Any, "Left column(s) to join on.")
+            .optional("right_on", SyntaxShape::Any, "Right column(s) to join on.")
             .switch(
                 "inner",
-                "inner joining between lazyframes (default)",
+                "Inner joining between lazyframes (default).",
                 Some('i'),
             )
-            .switch("left", "left join between lazyframes", Some('l'))
-            .switch("full", "full join between lazyframes", Some('f'))
-            .switch("cross", "cross join between lazyframes", Some('c'))
+            .switch("left", "Left join between lazyframes.", Some('l'))
+            .switch("full", "Full join between lazyframes.", Some('f'))
+            .switch("cross", "Cross join between lazyframes.", Some('c'))
             .switch("coalesce-columns", "Sets the join coalesce strategy to colesce columns. Most useful when used with --full, which will not otherwise coalesce.", None)
+            .switch("nulls-equal", "Join on null values. By default null values will never produce matches.", None)
             .named(
                 "suffix",
                 SyntaxShape::String,
-                "Suffix to use on columns with same name",
+                "Suffix to use on columns with same name.",
                 Some('s'),
             )
             .input_output_types(vec![
@@ -306,6 +307,47 @@ impl PluginCommand for LazyJoin {
                     .into_value(Span::test_data()),
                 ),
             },
+            Example {
+                description: "Join on nulls",
+                example: r#"[[col1 col2]; [2 a] [3 b] [null c]] | polars into-df
+                | polars join (
+                    [[col1 col3]; [2 x] [3 y] [null z]] | polars into-df
+                ) [col1] [col1] --nulls-equal
+                | polars collect"#,
+                result: Some(
+                    NuDataFrame::try_from_columns(
+                        vec![
+                            Column::new(
+                                "col1".to_string(),
+                                vec![
+                                    Value::test_int(2),
+                                    Value::test_int(3),
+                                    Value::test_nothing(),
+                                ],
+                            ),
+                            Column::new(
+                                "col2".to_string(),
+                                vec![
+                                    Value::test_string("a"),
+                                    Value::test_string("b"),
+                                    Value::test_string("c"),
+                                ],
+                            ),
+                            Column::new(
+                                "col3".to_string(),
+                                vec![
+                                    Value::test_string("x"),
+                                    Value::test_string("y"),
+                                    Value::test_string("z"),
+                                ],
+                            ),
+                        ],
+                        None,
+                    )
+                    .expect("simple df for test should not fail")
+                    .into_value(Span::test_data()),
+                ),
+            },
         ]
     }
 
@@ -389,6 +431,8 @@ impl PluginCommand for LazyJoin {
             JoinCoalesce::default()
         };
 
+        let nulls_equal = call.has_flag("nulls-equal")?;
+
         let lazy = if cross {
             lazy.join_builder()
                 .with(other)
@@ -398,6 +442,7 @@ impl PluginCommand for LazyJoin {
                 .how(how)
                 .force_parallel(true)
                 .suffix(suffix)
+                .join_nulls(nulls_equal)
                 .finish()
         } else {
             lazy.join_builder()
@@ -408,6 +453,7 @@ impl PluginCommand for LazyJoin {
                 .how(how)
                 .force_parallel(true)
                 .suffix(suffix)
+                .join_nulls(nulls_equal)
                 .finish()
         };
 

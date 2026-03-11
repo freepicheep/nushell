@@ -1,3 +1,4 @@
+use super::fields;
 use nu_engine::command_prelude::*;
 use nu_protocol::{
     HistoryFileFormat,
@@ -6,12 +7,6 @@ use nu_protocol::{
 #[cfg(feature = "sqlite")]
 use reedline::SqliteBackedHistory;
 use reedline::{FileBackedHistory, History as ReedlineHistory, SearchDirection, SearchQuery};
-
-#[cfg(feature = "sqlite")]
-#[allow(unused_imports)]
-use nu_command::SQLiteQueryBuilder;
-
-use super::fields;
 
 #[derive(Clone)]
 pub struct History;
@@ -29,10 +24,10 @@ impl Command for History {
         Signature::build("history")
             .input_output_types(vec![(Type::Nothing, Type::Any)])
             .allow_variants_without_examples(true)
-            .switch("clear", "Clears out the history entries", Some('c'))
+            .switch("clear", "Clears out the history entries.", Some('c'))
             .switch(
                 "long",
-                "Show long format with timestamps and additional details",
+                "Show long format with timestamps and additional details.",
                 Some('l'),
             )
             .category(Category::History)
@@ -158,9 +153,11 @@ impl Command for History {
             #[cfg(feature = "sqlite")]
             HistoryFileFormat::Sqlite => {
                 // Return a lazy SQLiteQueryBuilder for the history table
-                use nu_command::SQLiteQueryBuilder;
-                let mut table =
-                    SQLiteQueryBuilder::new(history_path, "history".to_string(), signals);
+                let mut table = nu_command::SQLiteQueryBuilder::new(
+                    history_path,
+                    "history".to_string(),
+                    signals,
+                );
                 if long {
                     table = table.with_select("id as item_id, start_timestamp, command_line as command, session_id, hostname, cwd, duration_ms as duration, exit_status, rowid as idx".to_string());
                 } else {
@@ -169,6 +166,12 @@ impl Command for History {
                             .to_string(),
                     );
                 }
+                table = table
+                    // Keep sqlite history output deterministic and append-ordered unless
+                    // the user explicitly requests a different sort.
+                    .with_order_by("rowid ASC".to_string())
+                    .with_unix_millis_datetime_column(fields::START_TIMESTAMP.to_string())
+                    .with_millis_duration_column(fields::DURATION.to_string());
                 Ok(PipelineData::Value(
                     Value::custom(Box::new(table), head),
                     None,

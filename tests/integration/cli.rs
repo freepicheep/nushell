@@ -1,11 +1,20 @@
-use assert_cmd::prelude::*;
+use assert_cmd::cargo_bin;
 use std::process::Command;
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
+fn unique_temp_script_path(stem: &str) -> std::path::PathBuf {
+    let unique = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|duration| duration.as_nanos())
+        .unwrap_or(0);
+
+    std::env::temp_dir().join(format!("{stem}_{}_{}.nu", std::process::id(), unique))
+}
+
 #[test]
 fn help_shows_usage() -> TestResult {
-    let mut cmd = Command::cargo_bin("nu")?;
+    let mut cmd = Command::new(cargo_bin!());
     let output = cmd.arg("--help").output()?;
     let stdout = String::from_utf8_lossy(&output.stdout);
 
@@ -18,7 +27,7 @@ fn help_shows_usage() -> TestResult {
 
 #[test]
 fn help_lists_all_flags() -> TestResult {
-    let mut cmd = Command::cargo_bin("nu")?;
+    let mut cmd = Command::new(cargo_bin!());
     let output = cmd.arg("--help").output()?;
     let stdout = String::from_utf8_lossy(&output.stdout);
 
@@ -74,7 +83,7 @@ fn help_lists_all_flags() -> TestResult {
 
 #[test]
 fn short_value_with_equals_runs() -> TestResult {
-    let mut cmd = Command::cargo_bin("nu")?;
+    let mut cmd = Command::new(cargo_bin!());
     let output = cmd
         .args(["--no-config-file", "--no-std-lib", "-c=print 1"])
         .output()?;
@@ -88,7 +97,7 @@ fn short_value_with_equals_runs() -> TestResult {
 
 #[test]
 fn version_flag_prints_version() -> TestResult {
-    let mut cmd = Command::cargo_bin("nu")?;
+    let mut cmd = Command::new(cargo_bin!());
     let output = cmd.arg("--version").output()?;
     let stdout = String::from_utf8_lossy(&output.stdout);
 
@@ -100,7 +109,7 @@ fn version_flag_prints_version() -> TestResult {
 
 #[test]
 fn inline_short_value_is_rejected() -> TestResult {
-    let mut cmd = Command::cargo_bin("nu")?;
+    let mut cmd = Command::new(cargo_bin!());
     let output = cmd
         .args(["--no-config-file", "--no-std-lib", "-cfoo"])
         .output()?;
@@ -114,7 +123,7 @@ fn inline_short_value_is_rejected() -> TestResult {
 
 #[test]
 fn unknown_flag_suggests_correction() -> TestResult {
-    let mut cmd = Command::cargo_bin("nu")?;
+    let mut cmd = Command::new(cargo_bin!());
     let output = cmd
         .args(["--no-config-file", "--no-std-lib", "--comma"])
         .output()?;
@@ -128,7 +137,7 @@ fn unknown_flag_suggests_correction() -> TestResult {
 
 #[test]
 fn experimental_options_accepts_bracketed_list() -> TestResult {
-    let mut cmd = Command::cargo_bin("nu")?;
+    let mut cmd = Command::new(cargo_bin!());
     let output = cmd
         .args([
             "--no-config-file",
@@ -147,7 +156,7 @@ fn experimental_options_accepts_bracketed_list() -> TestResult {
 
 #[test]
 fn experimental_options_accepts_comma_list() -> TestResult {
-    let mut cmd = Command::cargo_bin("nu")?;
+    let mut cmd = Command::new(cargo_bin!());
     let output = cmd
         .args([
             "--no-config-file",
@@ -166,7 +175,7 @@ fn experimental_options_accepts_comma_list() -> TestResult {
 
 #[test]
 fn experimental_options_rejects_invalid_value() -> TestResult {
-    let mut cmd = Command::cargo_bin("nu")?;
+    let mut cmd = Command::new(cargo_bin!());
     let output = cmd
         .args([
             "--no-config-file",
@@ -188,7 +197,7 @@ fn experimental_options_rejects_invalid_value() -> TestResult {
 
 #[test]
 fn experimental_options_missing_value_lists_modes() -> TestResult {
-    let mut cmd = Command::cargo_bin("nu")?;
+    let mut cmd = Command::new(cargo_bin!());
     let output = cmd
         .args(["--no-config-file", "--no-std-lib", "--experimental-options"])
         .output()?;
@@ -202,7 +211,7 @@ fn experimental_options_missing_value_lists_modes() -> TestResult {
 
 #[test]
 fn table_mode_rejects_invalid_value() -> TestResult {
-    let mut cmd = Command::cargo_bin("nu")?;
+    let mut cmd = Command::new(cargo_bin!());
     let output = cmd
         .args(["--no-config-file", "--no-std-lib", "--table-mode", "rounde"])
         .output()?;
@@ -217,7 +226,7 @@ fn table_mode_rejects_invalid_value() -> TestResult {
 
 #[test]
 fn table_mode_missing_value_lists_modes() -> TestResult {
-    let mut cmd = Command::cargo_bin("nu")?;
+    let mut cmd = Command::new(cargo_bin!());
     let output = cmd
         .args(["--no-config-file", "--no-std-lib", "-m"])
         .output()?;
@@ -231,7 +240,7 @@ fn table_mode_missing_value_lists_modes() -> TestResult {
 
 #[test]
 fn table_mode_accepts_valid_value() -> TestResult {
-    let mut cmd = Command::cargo_bin("nu")?;
+    let mut cmd = Command::new(cargo_bin!());
     let output = cmd
         .args([
             "--no-config-file",
@@ -250,7 +259,7 @@ fn table_mode_accepts_valid_value() -> TestResult {
 
 #[test]
 fn login_flag_runs() -> TestResult {
-    let mut cmd = Command::cargo_bin("nu")?;
+    let mut cmd = Command::new(cargo_bin!());
     let output = cmd
         .args(["--no-config-file", "--no-std-lib", "-l", "-c", "print 1"])
         .output()?;
@@ -262,7 +271,7 @@ fn login_flag_runs() -> TestResult {
 
 #[test]
 fn config_flag_accepts_path() -> TestResult {
-    let mut cmd = Command::cargo_bin("nu")?;
+    let mut cmd = Command::new(cargo_bin!());
     let output = cmd
         .args(["--config", "missing.nu", "--no-std-lib", "-c", "print 1"])
         .output()?;
@@ -274,7 +283,7 @@ fn config_flag_accepts_path() -> TestResult {
 
 #[test]
 fn env_config_flag_accepts_path() -> TestResult {
-    let mut cmd = Command::cargo_bin("nu")?;
+    let mut cmd = Command::new(cargo_bin!());
     let output = cmd
         .args([
             "--env-config",
@@ -292,7 +301,7 @@ fn env_config_flag_accepts_path() -> TestResult {
 
 #[test]
 fn include_path_accepts_value() -> TestResult {
-    let mut cmd = Command::cargo_bin("nu")?;
+    let mut cmd = Command::new(cargo_bin!());
     let output = cmd
         .args([
             "--no-config-file",
@@ -311,7 +320,7 @@ fn include_path_accepts_value() -> TestResult {
 
 #[test]
 fn execute_flag_accepts_value() -> TestResult {
-    let mut cmd = Command::cargo_bin("nu")?;
+    let mut cmd = Command::new(cargo_bin!());
     let output = cmd
         .args(["--no-config-file", "--no-std-lib", "-e", "print 1"])
         .output()?;
@@ -325,7 +334,7 @@ fn execute_flag_accepts_value() -> TestResult {
 
 #[test]
 fn interactive_and_login_flags_run() -> TestResult {
-    let mut cmd = Command::cargo_bin("nu")?;
+    let mut cmd = Command::new(cargo_bin!());
     let output = cmd
         .args(["--no-config-file", "--no-std-lib", "-il", "-c", "print 1"])
         .output()?;
@@ -337,7 +346,7 @@ fn interactive_and_login_flags_run() -> TestResult {
 
 #[test]
 fn no_newline_flag_suppresses_newline() -> TestResult {
-    let mut cmd = Command::cargo_bin("nu")?;
+    let mut cmd = Command::new(cargo_bin!());
     let output = cmd
         .args([
             "--no-config-file",
@@ -358,7 +367,7 @@ fn no_newline_flag_suppresses_newline() -> TestResult {
 
 #[test]
 fn no_history_flag_runs() -> TestResult {
-    let mut cmd = Command::cargo_bin("nu")?;
+    let mut cmd = Command::new(cargo_bin!());
     let output = cmd
         .args(["--no-history", "--no-std-lib", "-c", "print 1"])
         .output()?;
@@ -370,7 +379,7 @@ fn no_history_flag_runs() -> TestResult {
 
 #[test]
 fn log_flags_accept_values() -> TestResult {
-    let mut cmd = Command::cargo_bin("nu")?;
+    let mut cmd = Command::new(cargo_bin!());
     let output = cmd
         .args([
             "--no-config-file",
@@ -395,7 +404,7 @@ fn log_flags_accept_values() -> TestResult {
 
 #[test]
 fn log_level_rejects_invalid_value() -> TestResult {
-    let mut cmd = Command::cargo_bin("nu")?;
+    let mut cmd = Command::new(cargo_bin!());
     let output = cmd
         .args(["--no-config-file", "--no-std-lib", "--log-level", "infos"])
         .output()?;
@@ -410,7 +419,7 @@ fn log_level_rejects_invalid_value() -> TestResult {
 
 #[test]
 fn log_target_rejects_invalid_value() -> TestResult {
-    let mut cmd = Command::cargo_bin("nu")?;
+    let mut cmd = Command::new(cargo_bin!());
     let output = cmd
         .args(["--no-config-file", "--no-std-lib", "--log-target", "std"])
         .output()?;
@@ -425,7 +434,7 @@ fn log_target_rejects_invalid_value() -> TestResult {
 
 #[test]
 fn log_include_rejects_invalid_value() -> TestResult {
-    let mut cmd = Command::cargo_bin("nu")?;
+    let mut cmd = Command::new(cargo_bin!());
     let output = cmd
         .args([
             "--no-config-file",
@@ -445,7 +454,7 @@ fn log_include_rejects_invalid_value() -> TestResult {
 
 #[test]
 fn log_exclude_rejects_invalid_value() -> TestResult {
-    let mut cmd = Command::cargo_bin("nu")?;
+    let mut cmd = Command::new(cargo_bin!());
     let output = cmd
         .args([
             "--no-config-file",
@@ -465,7 +474,7 @@ fn log_exclude_rejects_invalid_value() -> TestResult {
 
 #[test]
 fn log_level_missing_value_lists_modes() -> TestResult {
-    let mut cmd = Command::cargo_bin("nu")?;
+    let mut cmd = Command::new(cargo_bin!());
     let output = cmd
         .args(["--no-config-file", "--no-std-lib", "--log-level"])
         .output()?;
@@ -479,7 +488,7 @@ fn log_level_missing_value_lists_modes() -> TestResult {
 
 #[test]
 fn log_target_missing_value_lists_modes() -> TestResult {
-    let mut cmd = Command::cargo_bin("nu")?;
+    let mut cmd = Command::new(cargo_bin!());
     let output = cmd
         .args(["--no-config-file", "--no-std-lib", "--log-target"])
         .output()?;
@@ -493,7 +502,7 @@ fn log_target_missing_value_lists_modes() -> TestResult {
 
 #[test]
 fn log_include_missing_value_lists_modes() -> TestResult {
-    let mut cmd = Command::cargo_bin("nu")?;
+    let mut cmd = Command::new(cargo_bin!());
     let output = cmd
         .args(["--no-config-file", "--no-std-lib", "--log-include"])
         .output()?;
@@ -507,7 +516,7 @@ fn log_include_missing_value_lists_modes() -> TestResult {
 
 #[test]
 fn log_exclude_missing_value_lists_modes() -> TestResult {
-    let mut cmd = Command::cargo_bin("nu")?;
+    let mut cmd = Command::new(cargo_bin!());
     let output = cmd
         .args(["--no-config-file", "--no-std-lib", "--log-exclude"])
         .output()?;
@@ -521,7 +530,7 @@ fn log_exclude_missing_value_lists_modes() -> TestResult {
 
 #[test]
 fn stdin_flag_runs() -> TestResult {
-    let mut cmd = Command::cargo_bin("nu")?;
+    let mut cmd = Command::new(cargo_bin!());
     let output = cmd
         .args([
             "--no-config-file",
@@ -539,7 +548,7 @@ fn stdin_flag_runs() -> TestResult {
 
 #[test]
 fn testbin_flag_accepts_value() -> TestResult {
-    let mut cmd = Command::cargo_bin("nu")?;
+    let mut cmd = Command::new(cargo_bin!());
     let output = cmd
         .args(["--testbin", "cococo", "--no-std-lib", "-c", "print 1"])
         .output()?;
@@ -551,7 +560,7 @@ fn testbin_flag_accepts_value() -> TestResult {
 
 #[test]
 fn testbin_rejects_invalid_value() -> TestResult {
-    let mut cmd = Command::cargo_bin("nu")?;
+    let mut cmd = Command::new(cargo_bin!());
     let output = cmd
         .args(["--no-config-file", "--no-std-lib", "--testbin", "cocooo"])
         .output()?;
@@ -566,7 +575,7 @@ fn testbin_rejects_invalid_value() -> TestResult {
 
 #[test]
 fn testbin_missing_value_lists_modes() -> TestResult {
-    let mut cmd = Command::cargo_bin("nu")?;
+    let mut cmd = Command::new(cargo_bin!());
     let output = cmd
         .args(["--no-config-file", "--no-std-lib", "--testbin"])
         .output()?;
@@ -580,7 +589,7 @@ fn testbin_missing_value_lists_modes() -> TestResult {
 
 #[test]
 fn error_style_flag_accepts_value() -> TestResult {
-    let mut cmd = Command::cargo_bin("nu")?;
+    let mut cmd = Command::new(cargo_bin!());
     let output = cmd
         .args([
             "--no-config-file",
@@ -599,7 +608,7 @@ fn error_style_flag_accepts_value() -> TestResult {
 
 #[test]
 fn error_style_rejects_invalid_value() -> TestResult {
-    let mut cmd = Command::cargo_bin("nu")?;
+    let mut cmd = Command::new(cargo_bin!());
     let output = cmd
         .args(["--no-config-file", "--no-std-lib", "--error-style", "fanc"])
         .output()?;
@@ -614,7 +623,7 @@ fn error_style_rejects_invalid_value() -> TestResult {
 
 #[test]
 fn error_style_missing_value_lists_modes() -> TestResult {
-    let mut cmd = Command::cargo_bin("nu")?;
+    let mut cmd = Command::new(cargo_bin!());
     let output = cmd
         .args(["--no-config-file", "--no-std-lib", "--error-style"])
         .output()?;
@@ -628,7 +637,7 @@ fn error_style_missing_value_lists_modes() -> TestResult {
 
 #[test]
 fn ide_flags_accept_values() -> TestResult {
-    let mut cmd = Command::cargo_bin("nu")?;
+    let mut cmd = Command::new(cargo_bin!());
     let output = cmd
         .args([
             "--no-config-file",
@@ -653,7 +662,7 @@ fn ide_flags_accept_values() -> TestResult {
 
 #[test]
 fn ide_ast_flag_runs() -> TestResult {
-    let mut cmd = Command::cargo_bin("nu")?;
+    let mut cmd = Command::new(cargo_bin!());
     let output = cmd
         .args([
             "--no-config-file",
@@ -671,7 +680,7 @@ fn ide_ast_flag_runs() -> TestResult {
 
 #[test]
 fn lsp_flag_accepts_run() -> TestResult {
-    let mut cmd = Command::cargo_bin("nu")?;
+    let mut cmd = Command::new(cargo_bin!());
     let output = cmd
         .args(["--no-config-file", "--no-std-lib", "--lsp"])
         .output()?;
@@ -687,7 +696,7 @@ fn lsp_flag_accepts_run() -> TestResult {
 fn mcp_flag_runs_when_enabled() -> TestResult {
     #[cfg(feature = "mcp")]
     {
-        let mut cmd = Command::cargo_bin("nu")?;
+        let mut cmd = Command::new(cargo_bin!());
         let output = cmd
             .args(["--no-config-file", "--no-std-lib", "--mcp"])
             .output()?;
@@ -702,7 +711,7 @@ fn mcp_flag_runs_when_enabled() -> TestResult {
 fn plugin_flags_accept_paths_when_enabled() -> TestResult {
     #[cfg(feature = "plugin")]
     {
-        let mut cmd = Command::cargo_bin("nu")?;
+        let mut cmd = Command::new(cargo_bin!());
         let output = cmd
             .args([
                 "--plugin-config",
@@ -725,7 +734,7 @@ fn plugin_flags_accept_paths_when_enabled() -> TestResult {
 fn plugins_requires_absolute_paths() -> TestResult {
     #[cfg(feature = "plugin")]
     {
-        let mut cmd = Command::cargo_bin("nu")?;
+        let mut cmd = Command::new(cargo_bin!());
         let output = cmd
             .args([
                 "--no-config-file",
@@ -745,7 +754,7 @@ fn plugins_requires_absolute_paths() -> TestResult {
 
 #[test]
 fn login_shell_sets_dash_name() -> TestResult {
-    let mut cmd = Command::cargo_bin("nu")?;
+    let mut cmd = Command::new(cargo_bin!());
     let output = cmd.arg("-c").arg("print 1").output()?;
 
     assert!(output.status.success());
@@ -755,7 +764,7 @@ fn login_shell_sets_dash_name() -> TestResult {
 
 #[test]
 fn double_dash_preserves_script_args() -> TestResult {
-    let mut cmd = Command::cargo_bin("nu")?;
+    let mut cmd = Command::new(cargo_bin!());
     let output = cmd.args(["--help", "--", "--flag", "value"]).output()?;
     let stdout = String::from_utf8_lossy(&output.stdout);
 
@@ -768,7 +777,7 @@ fn double_dash_preserves_script_args() -> TestResult {
 // Tests for --log-include with various formats
 #[test]
 fn log_include_accepts_single_value() -> TestResult {
-    let mut cmd = Command::cargo_bin("nu")?;
+    let mut cmd = Command::new(cargo_bin!());
     let output = cmd
         .args([
             "--no-config-file",
@@ -786,7 +795,7 @@ fn log_include_accepts_single_value() -> TestResult {
 
 #[test]
 fn log_include_accepts_multiple_values_space_separated() -> TestResult {
-    let mut cmd = Command::cargo_bin("nu")?;
+    let mut cmd = Command::new(cargo_bin!());
     let output = cmd
         .args([
             "--no-config-file",
@@ -805,7 +814,7 @@ fn log_include_accepts_multiple_values_space_separated() -> TestResult {
 
 #[test]
 fn log_include_accepts_comma_separated_no_brackets() -> TestResult {
-    let mut cmd = Command::cargo_bin("nu")?;
+    let mut cmd = Command::new(cargo_bin!());
     let output = cmd
         .args([
             "--no-config-file",
@@ -823,7 +832,7 @@ fn log_include_accepts_comma_separated_no_brackets() -> TestResult {
 
 #[test]
 fn log_include_accepts_comma_separated_with_spaces() -> TestResult {
-    let mut cmd = Command::cargo_bin("nu")?;
+    let mut cmd = Command::new(cargo_bin!());
     let output = cmd
         .args([
             "--no-config-file",
@@ -841,7 +850,7 @@ fn log_include_accepts_comma_separated_with_spaces() -> TestResult {
 
 #[test]
 fn log_include_accepts_bracketed_list() -> TestResult {
-    let mut cmd = Command::cargo_bin("nu")?;
+    let mut cmd = Command::new(cargo_bin!());
     let output = cmd
         .args([
             "--no-config-file",
@@ -859,7 +868,7 @@ fn log_include_accepts_bracketed_list() -> TestResult {
 
 #[test]
 fn log_include_accepts_bracketed_list_with_spaces() -> TestResult {
-    let mut cmd = Command::cargo_bin("nu")?;
+    let mut cmd = Command::new(cargo_bin!());
     let output = cmd
         .args([
             "--no-config-file",
@@ -877,7 +886,7 @@ fn log_include_accepts_bracketed_list_with_spaces() -> TestResult {
 
 #[test]
 fn log_include_rejects_invalid_level() -> TestResult {
-    let mut cmd = Command::cargo_bin("nu")?;
+    let mut cmd = Command::new(cargo_bin!());
     let output = cmd
         .args([
             "--no-config-file",
@@ -898,7 +907,7 @@ fn log_include_rejects_invalid_level() -> TestResult {
 // Tests for --log-exclude with various formats
 #[test]
 fn log_exclude_accepts_single_value() -> TestResult {
-    let mut cmd = Command::cargo_bin("nu")?;
+    let mut cmd = Command::new(cargo_bin!());
     let output = cmd
         .args([
             "--no-config-file",
@@ -916,7 +925,7 @@ fn log_exclude_accepts_single_value() -> TestResult {
 
 #[test]
 fn log_exclude_accepts_multiple_values_space_separated() -> TestResult {
-    let mut cmd = Command::cargo_bin("nu")?;
+    let mut cmd = Command::new(cargo_bin!());
     let output = cmd
         .args([
             "--no-config-file",
@@ -935,7 +944,7 @@ fn log_exclude_accepts_multiple_values_space_separated() -> TestResult {
 
 #[test]
 fn log_exclude_accepts_comma_separated() -> TestResult {
-    let mut cmd = Command::cargo_bin("nu")?;
+    let mut cmd = Command::new(cargo_bin!());
     let output = cmd
         .args([
             "--no-config-file",
@@ -953,7 +962,7 @@ fn log_exclude_accepts_comma_separated() -> TestResult {
 
 #[test]
 fn log_exclude_accepts_bracketed_list() -> TestResult {
-    let mut cmd = Command::cargo_bin("nu")?;
+    let mut cmd = Command::new(cargo_bin!());
     let output = cmd
         .args([
             "--no-config-file",
@@ -971,7 +980,7 @@ fn log_exclude_accepts_bracketed_list() -> TestResult {
 
 #[test]
 fn log_exclude_rejects_invalid_level() -> TestResult {
-    let mut cmd = Command::cargo_bin("nu")?;
+    let mut cmd = Command::new(cargo_bin!());
     let output = cmd
         .args([
             "--no-config-file",
@@ -992,7 +1001,7 @@ fn log_exclude_rejects_invalid_level() -> TestResult {
 // Additional test for --experimental-options to test the specific case from the regression
 #[test]
 fn experimental_options_accepts_unquoted_bracketed_multivalue() -> TestResult {
-    let mut cmd = Command::cargo_bin("nu")?;
+    let mut cmd = Command::new(cargo_bin!());
     let output = cmd
         .args([
             "--no-config-file",
@@ -1013,7 +1022,7 @@ fn experimental_options_accepts_unquoted_bracketed_multivalue() -> TestResult {
 
 #[test]
 fn experimental_options_accepts_all() -> TestResult {
-    let mut cmd = Command::cargo_bin("nu")?;
+    let mut cmd = Command::new(cargo_bin!());
     let output = cmd
         .args([
             "--no-config-file",
@@ -1033,7 +1042,7 @@ fn experimental_options_accepts_all() -> TestResult {
 
 #[test]
 fn parses_combined_shorts_with_value_last() -> TestResult {
-    let mut cmd = Command::cargo_bin("nu")?;
+    let mut cmd = Command::new(cargo_bin!());
     let output = cmd
         .args(["--no-config-file", "--no-std-lib", "-ilc", "print 1"])
         .output()?;
@@ -1044,7 +1053,7 @@ fn parses_combined_shorts_with_value_last() -> TestResult {
 
 #[test]
 fn accepts_combined_shorts_without_value() -> TestResult {
-    let mut cmd = Command::cargo_bin("nu")?;
+    let mut cmd = Command::new(cargo_bin!());
     let output = cmd
         .args(["--no-config-file", "--no-std-lib", "-il", "-c", "print 1"])
         .output()?;
@@ -1055,7 +1064,7 @@ fn accepts_combined_shorts_without_value() -> TestResult {
 
 #[test]
 fn accepts_split_shorts_for_value() -> TestResult {
-    let mut cmd = Command::cargo_bin("nu")?;
+    let mut cmd = Command::new(cargo_bin!());
     let output = cmd
         .args([
             "--no-config-file",
@@ -1073,7 +1082,7 @@ fn accepts_split_shorts_for_value() -> TestResult {
 
 #[test]
 fn accepts_group_then_value_flag() -> TestResult {
-    let mut cmd = Command::cargo_bin("nu")?;
+    let mut cmd = Command::new(cargo_bin!());
     let output = cmd
         .args(["--no-config-file", "--no-std-lib", "-il", "-c", "print 1"])
         .output()?;
@@ -1084,7 +1093,7 @@ fn accepts_group_then_value_flag() -> TestResult {
 
 #[test]
 fn accepts_group_then_value_flag_with_equals() -> TestResult {
-    let mut cmd = Command::cargo_bin("nu")?;
+    let mut cmd = Command::new(cargo_bin!());
     let output = cmd
         .args(["--no-config-file", "--no-std-lib", "-il", "-c=print 1"])
         .output()?;
@@ -1095,7 +1104,7 @@ fn accepts_group_then_value_flag_with_equals() -> TestResult {
 
 #[test]
 fn missing_table_mode_lists_values() -> TestResult {
-    let mut cmd = Command::cargo_bin("nu")?;
+    let mut cmd = Command::new(cargo_bin!());
     let output = cmd
         .args(["--no-config-file", "--no-std-lib", "-m"])
         .output()?;
@@ -1108,7 +1117,7 @@ fn missing_table_mode_lists_values() -> TestResult {
 
 #[test]
 fn missing_error_style_lists_values() -> TestResult {
-    let mut cmd = Command::cargo_bin("nu")?;
+    let mut cmd = Command::new(cargo_bin!());
     let output = cmd
         .args(["--no-config-file", "--no-std-lib", "--error-style"])
         .output()?;
@@ -1121,7 +1130,7 @@ fn missing_error_style_lists_values() -> TestResult {
 
 #[test]
 fn missing_testbin_lists_values() -> TestResult {
-    let mut cmd = Command::cargo_bin("nu")?;
+    let mut cmd = Command::new(cargo_bin!());
     let output = cmd
         .args(["--no-config-file", "--no-std-lib", "--testbin"])
         .output()?;
@@ -1134,7 +1143,7 @@ fn missing_testbin_lists_values() -> TestResult {
 
 #[test]
 fn rejects_invalid_testbin_value() -> TestResult {
-    let mut cmd = Command::cargo_bin("nu")?;
+    let mut cmd = Command::new(cargo_bin!());
     let output = cmd
         .args([
             "--no-config-file",
@@ -1154,7 +1163,7 @@ fn rejects_invalid_testbin_value() -> TestResult {
 
 #[test]
 fn missing_log_level_lists_values() -> TestResult {
-    let mut cmd = Command::cargo_bin("nu")?;
+    let mut cmd = Command::new(cargo_bin!());
     let output = cmd
         .args(["--no-config-file", "--no-std-lib", "--log-level"])
         .output()?;
@@ -1167,7 +1176,7 @@ fn missing_log_level_lists_values() -> TestResult {
 
 #[test]
 fn missing_log_target_lists_values() -> TestResult {
-    let mut cmd = Command::cargo_bin("nu")?;
+    let mut cmd = Command::new(cargo_bin!());
     let output = cmd
         .args(["--no-config-file", "--no-std-lib", "--log-target"])
         .output()?;
@@ -1180,7 +1189,7 @@ fn missing_log_target_lists_values() -> TestResult {
 
 #[test]
 fn rejects_value_flag_not_last() -> TestResult {
-    let mut cmd = Command::cargo_bin("nu")?;
+    let mut cmd = Command::new(cargo_bin!());
     let output = cmd
         .args(["--no-config-file", "--no-std-lib", "-cil"])
         .output()?;
@@ -1193,7 +1202,7 @@ fn rejects_value_flag_not_last() -> TestResult {
 
 #[test]
 fn rejects_inline_short_value() -> TestResult {
-    let mut cmd = Command::cargo_bin("nu")?;
+    let mut cmd = Command::new(cargo_bin!());
     let output = cmd
         .args(["--no-config-file", "--no-std-lib", "-cfoo"])
         .output()?;
@@ -1206,7 +1215,7 @@ fn rejects_inline_short_value() -> TestResult {
 
 #[test]
 fn rejects_combined_inline_short_value() -> TestResult {
-    let mut cmd = Command::cargo_bin("nu")?;
+    let mut cmd = Command::new(cargo_bin!());
     let output = cmd
         .args(["--no-config-file", "--no-std-lib", "-abcfoo"])
         .output()?;
@@ -1219,7 +1228,7 @@ fn rejects_combined_inline_short_value() -> TestResult {
 
 #[test]
 fn accepts_short_value_with_equals() -> TestResult {
-    let mut cmd = Command::cargo_bin("nu")?;
+    let mut cmd = Command::new(cargo_bin!());
     let output = cmd
         .args(["--no-config-file", "--no-std-lib", "-c=print 1"])
         .output()?;
@@ -1230,7 +1239,7 @@ fn accepts_short_value_with_equals() -> TestResult {
 
 #[test]
 fn suggests_unknown_flags() -> TestResult {
-    let mut cmd = Command::cargo_bin("nu")?;
+    let mut cmd = Command::new(cargo_bin!());
     let output = cmd
         .args(["--no-config-file", "--no-std-lib", "--comma", "ls"])
         .output()?;
@@ -1249,7 +1258,7 @@ fn suggests_unknown_flags() -> TestResult {
 // Tests for --no-config-file flag
 #[test]
 fn no_config_file_flag_prevents_config_loading() -> TestResult {
-    let mut cmd = Command::cargo_bin("nu")?;
+    let mut cmd = Command::new(cargo_bin!());
     let output = cmd
         .args(["--no-config-file", "--no-std-lib", "-c", "print 'ok'"])
         .output()?;
@@ -1262,7 +1271,7 @@ fn no_config_file_flag_prevents_config_loading() -> TestResult {
 
 #[test]
 fn no_config_file_short_flag_works() -> TestResult {
-    let mut cmd = Command::cargo_bin("nu")?;
+    let mut cmd = Command::new(cargo_bin!());
     let output = cmd
         .args(["-n", "--no-std-lib", "-c", "print 'ok'"])
         .output()?;
@@ -1276,7 +1285,7 @@ fn no_config_file_short_flag_works() -> TestResult {
 // Tests for --no-std-lib flag
 #[test]
 fn no_std_lib_flag_prevents_std_loading() -> TestResult {
-    let mut cmd = Command::cargo_bin("nu")?;
+    let mut cmd = Command::new(cargo_bin!());
     let output = cmd
         .args(["--no-config-file", "--no-std-lib", "-c", "print 'ok'"])
         .output()?;
@@ -1290,7 +1299,7 @@ fn no_std_lib_flag_prevents_std_loading() -> TestResult {
 // Tests for --include-path with various formats
 #[test]
 fn include_path_accepts_single_path() -> TestResult {
-    let mut cmd = Command::cargo_bin("nu")?;
+    let mut cmd = Command::new(cargo_bin!());
     let output = cmd
         .args([
             "--no-config-file",
@@ -1310,7 +1319,7 @@ fn include_path_accepts_single_path() -> TestResult {
 
 #[test]
 fn include_path_short_flag_works() -> TestResult {
-    let mut cmd = Command::cargo_bin("nu")?;
+    let mut cmd = Command::new(cargo_bin!());
     let output = cmd
         .args([
             "--no-config-file",
@@ -1330,7 +1339,7 @@ fn include_path_short_flag_works() -> TestResult {
 
 #[test]
 fn include_path_accepts_multiple_paths_separated() -> TestResult {
-    let mut cmd = Command::cargo_bin("nu")?;
+    let mut cmd = Command::new(cargo_bin!());
     let paths = format!(".{sep}tests", sep = '\x1e');
     let output = cmd
         .args([
@@ -1352,7 +1361,7 @@ fn include_path_accepts_multiple_paths_separated() -> TestResult {
 // Tests for --no-newline with commands
 #[test]
 fn no_newline_with_commands_suppresses_final_newline() -> TestResult {
-    let mut cmd = Command::cargo_bin("nu")?;
+    let mut cmd = Command::new(cargo_bin!());
     let output = cmd
         .args([
             "--no-config-file",
@@ -1374,7 +1383,7 @@ fn no_newline_with_commands_suppresses_final_newline() -> TestResult {
 
 #[test]
 fn no_newline_only_affects_result_not_print() -> TestResult {
-    let mut cmd = Command::cargo_bin("nu")?;
+    let mut cmd = Command::new(cargo_bin!());
     let output = cmd
         .args([
             "--no-config-file",
@@ -1396,14 +1405,13 @@ fn no_newline_only_affects_result_not_print() -> TestResult {
 // Tests for script files with arguments
 #[test]
 fn script_can_receive_arguments() -> TestResult {
-    let temp_dir = std::env::temp_dir();
-    let script_path = temp_dir.join("test_args_script.nu");
+    let script_path = unique_temp_script_path("test_args_script");
 
     // Create a script that uses $env.args - note: this might not work if args aren't exposed
     // We'll use a simple script that just works
     std::fs::write(&script_path, "# This is a test script\nprint 'script ran'")?;
 
-    let mut cmd = Command::cargo_bin("nu")?;
+    let mut cmd = Command::new(cargo_bin!());
     let output = cmd
         .args([
             "--no-config-file",
@@ -1422,12 +1430,11 @@ fn script_can_receive_arguments() -> TestResult {
 
 #[test]
 fn script_path_can_have_args_after_it() -> TestResult {
-    let temp_dir = std::env::temp_dir();
-    let script_path = temp_dir.join("test_script_args2.nu");
+    let script_path = unique_temp_script_path("test_script_args2");
 
     std::fs::write(&script_path, "print 'ok'")?;
 
-    let mut cmd = Command::cargo_bin("nu")?;
+    let mut cmd = Command::new(cargo_bin!());
     let output = cmd
         .args([
             "--no-config-file",
@@ -1448,12 +1455,11 @@ fn script_path_can_have_args_after_it() -> TestResult {
 
 #[test]
 fn script_with_nu_flags_before_script_name() -> TestResult {
-    let temp_dir = std::env::temp_dir();
-    let script_path = temp_dir.join("test_flags_before.nu");
+    let script_path = unique_temp_script_path("test_flags_before");
 
     std::fs::write(&script_path, "print 'flags work'")?;
 
-    let mut cmd = Command::cargo_bin("nu")?;
+    let mut cmd = Command::new(cargo_bin!());
     let output = cmd
         .args([
             "--no-config-file",
@@ -1475,7 +1481,7 @@ fn script_with_nu_flags_before_script_name() -> TestResult {
 // Tests for combined flags with scripts
 #[test]
 fn combined_short_flags_work_with_commands() -> TestResult {
-    let mut cmd = Command::cargo_bin("nu")?;
+    let mut cmd = Command::new(cargo_bin!());
     let output = cmd.args(["-nc", "print 'ok'"]).output()?;
     let stdout = String::from_utf8_lossy(&output.stdout);
 
@@ -1508,7 +1514,7 @@ fn table_mode_accepts_all_valid_modes() -> TestResult {
     ];
 
     for mode in modes {
-        let mut cmd = Command::cargo_bin("nu")?;
+        let mut cmd = Command::new(cargo_bin!());
         let output = cmd
             .args([
                 "--no-config-file",
@@ -1532,7 +1538,7 @@ fn error_style_accepts_all_valid_styles() -> TestResult {
     let styles = ["fancy", "plain", "short"];
 
     for style in styles {
-        let mut cmd = Command::cargo_bin("nu")?;
+        let mut cmd = Command::new(cargo_bin!());
         let output = cmd
             .args([
                 "--no-config-file",
@@ -1556,7 +1562,7 @@ fn log_level_accepts_all_valid_levels() -> TestResult {
     let levels = ["error", "warn", "info", "debug", "trace"];
 
     for level in levels {
-        let mut cmd = Command::cargo_bin("nu")?;
+        let mut cmd = Command::new(cargo_bin!());
         let output = cmd
             .args([
                 "--no-config-file",
@@ -1582,7 +1588,7 @@ fn log_target_accepts_all_valid_targets() -> TestResult {
     let targets = ["stdout", "stderr", "mixed"];
 
     for target in targets {
-        let mut cmd = Command::cargo_bin("nu")?;
+        let mut cmd = Command::new(cargo_bin!());
         let output = cmd
             .args([
                 "--no-config-file",
@@ -1600,33 +1606,186 @@ fn log_target_accepts_all_valid_targets() -> TestResult {
     Ok(())
 }
 
-// Test combining multiple flags in different orders
+// Specifying --log-file without setting --log-target file should fail
 #[test]
-fn multiple_flags_in_various_orders_work() -> TestResult {
-    let mut cmd = Command::cargo_bin("nu")?;
+fn log_file_without_target_fails() -> TestResult {
+    let mut cmd = Command::new(cargo_bin!());
     let output = cmd
         .args([
-            "--no-std-lib",
-            "--error-style",
-            "plain",
             "--no-config-file",
-            "--table-mode",
-            "basic",
+            "--no-std-lib",
+            "--log-file",
+            "some.log",
             "-c",
             "print 'ok'",
+        ])
+        .output()?;
+
+    assert!(
+        !output.status.success(),
+        "Expected failure when log-file is used without file target"
+    );
+    Ok(())
+}
+
+// The combination of file target and file path requires an explicit log-level
+#[test]
+fn log_file_target_needs_level() -> TestResult {
+    let temp = std::env::temp_dir().join("nu_cli_log.log");
+    let path = temp.to_str().unwrap();
+
+    let mut cmd = Command::new(cargo_bin!());
+    let output = cmd
+        .args([
+            "--no-config-file",
+            "--no-std-lib",
+            "--log-target",
+            "file",
+            "--log-file",
+            path,
+            "-c",
+            "print 'ok'",
+        ])
+        .output()?;
+
+    let _ = std::fs::remove_file(&temp);
+    assert!(
+        !output.status.success(),
+        "Expected failure when log-level is missing"
+    );
+    Ok(())
+}
+
+// File target must be accompanied by a log-file argument
+#[test]
+fn log_target_file_with_log_file_succeeds() -> TestResult {
+    let temp = std::env::temp_dir().join("nu_cli_log.log");
+    let path = temp.to_str().unwrap();
+
+    let mut cmd = Command::new(cargo_bin!());
+    let output = cmd
+        .args([
+            "--no-config-file",
+            "--no-std-lib",
+            "--log-target",
+            "file",
+            "--log-file",
+            path,
+            "--log-level",
+            "info",
+            "-c",
+            "print 'ok'",
+        ])
+        .output()?;
+
+    let _ = std::fs::remove_file(&temp);
+    assert!(
+        output.status.success(),
+        "Expected success with log file path"
+    );
+    Ok(())
+}
+
+#[test]
+fn log_target_file_without_log_file_fails() -> TestResult {
+    let mut cmd = Command::new(cargo_bin!());
+    let output = cmd
+        .args([
+            "--no-config-file",
+            "--no-std-lib",
+            "--log-target",
+            "file",
+            "-c",
+            "print 'ok'",
+        ])
+        .output()?;
+
+    assert!(
+        !output.status.success(),
+        "Expected failure when missing --log-file"
+    );
+    Ok(())
+}
+
+// Test that -I sets $env.NU_LIB_DIRS correctly
+#[test]
+fn include_path_sets_env_nu_lib_dirs() -> TestResult {
+    let mut cmd = Command::new(cargo_bin!());
+    let output = cmd
+        .args([
+            "--no-config-file",
+            "--no-std-lib",
+            "-I",
+            "/tmp/test",
+            "-c",
+            "$env.NU_LIB_DIRS | to nuon",
         ])
         .output()?;
     let stdout = String::from_utf8_lossy(&output.stdout);
 
     assert!(output.status.success());
-    assert_eq!(stdout.trim(), "ok");
+    assert!(stdout.contains(r#"/tmp/test"#));
+    Ok(())
+}
+
+// Test that -I appends to existing NU_LIB_DIRS env var
+// Test that -I appends to NU_LIB_DIRS env var
+// Note: This test checks that -I works, env appending may not work in test framework
+#[test]
+fn include_path_appends_to_env_nu_lib_dirs() -> TestResult {
+    let mut cmd = Command::new(cargo_bin!());
+    let output = cmd
+        .args([
+            "--no-config-file",
+            "--no-std-lib",
+            "-I",
+            "/tmp/append",
+            "-c",
+            "$env.NU_LIB_DIRS | to nuon",
+        ])
+        .output()?;
+    let stdout = String::from_utf8_lossy(&output.stdout);
+
+    assert!(output.status.success());
+    // Should at least contain the -I path
+    assert!(stdout.contains(r#"/tmp/append"#));
+    #[cfg(windows)]
+    {
+        assert!(stdout.contains(r#"\scripts"#));
+        assert!(stdout.contains(r#"\completions"#));
+    }
+    #[cfg(not(windows))]
+    {
+        assert!(stdout.contains(r#"/scripts"#));
+        assert!(stdout.contains(r#"/completions"#));
+    }
+    Ok(())
+}
+
+// Test that NU_LIB_DIRS env var sets $env.NU_LIB_DIRS
+#[test]
+fn nu_lib_dirs_env_var_sets_env() -> TestResult {
+    let mut cmd = Command::new(cargo_bin!());
+    cmd.env("NU_LIB_DIRS", "/tmp/envpath");
+    let output = cmd
+        .args([
+            "--no-config-file",
+            "--no-std-lib",
+            "-c",
+            "$env.NU_LIB_DIRS | to nuon",
+        ])
+        .output()?;
+    let stdout = String::from_utf8_lossy(&output.stdout);
+
+    assert!(output.status.success());
+    assert!(stdout.contains(r#"/tmp/envpath"#));
     Ok(())
 }
 
 // Test that --commands and --execute are mutually exclusive behaviors
 #[test]
 fn commands_flag_exits_after_execution() -> TestResult {
-    let mut cmd = Command::cargo_bin("nu")?;
+    let mut cmd = Command::new(cargo_bin!());
     let output = cmd
         .args(["--no-config-file", "--no-std-lib", "-c", "print 'test'"])
         .output()?;
@@ -1640,7 +1799,7 @@ fn commands_flag_exits_after_execution() -> TestResult {
 // Test stdin flag with piped input
 #[test]
 fn stdin_flag_with_commands_receives_input() -> TestResult {
-    let mut cmd = Command::cargo_bin("nu")?;
+    let mut cmd = Command::new(cargo_bin!());
     let mut child = cmd
         .args(["--no-config-file", "--no-std-lib", "--stdin", "-c", "$in"])
         .stdin(std::process::Stdio::piped())
@@ -1657,5 +1816,115 @@ fn stdin_flag_with_commands_receives_input() -> TestResult {
 
     assert!(output.status.success());
     assert!(stdout.contains("test input"));
+    Ok(())
+}
+
+// Tests for short-flag group validation (PR #17492)
+// These tests verify that short-flag validation works correctly and that
+// the bare dash "-" is rejected early, making certain code paths unreachable.
+
+#[test]
+fn bare_dash_is_rejected() -> TestResult {
+    let mut cmd = Command::new(cargo_bin!());
+    let output = cmd
+        .args(["--no-config-file", "--no-std-lib", "-"])
+        .output()?;
+
+    assert!(!output.status.success());
+    Ok(())
+}
+
+#[test]
+fn long_flag_without_value_works() -> TestResult {
+    let mut cmd = Command::new(cargo_bin!());
+    let output = cmd
+        .args([
+            "--no-config-file",
+            "--no-std-lib",
+            "--no-history",
+            "-c",
+            "print ok",
+        ])
+        .output()?;
+    let stdout = String::from_utf8_lossy(&output.stdout);
+
+    assert!(output.status.success());
+    assert_eq!(stdout.trim(), "ok");
+    Ok(())
+}
+
+#[test]
+fn long_flag_with_value_works() -> TestResult {
+    let mut cmd = Command::new(cargo_bin!());
+    let output = cmd
+        .args([
+            "--no-config-file",
+            "--no-std-lib",
+            "--table-mode",
+            "basic",
+            "-c",
+            "print ok",
+        ])
+        .output()?;
+    let stdout = String::from_utf8_lossy(&output.stdout);
+
+    assert!(output.status.success());
+    assert_eq!(stdout.trim(), "ok");
+    Ok(())
+}
+
+#[test]
+fn short_flag_without_value_works() -> TestResult {
+    let mut cmd = Command::new(cargo_bin!());
+    let output = cmd
+        .args(["--no-config-file", "--no-std-lib", "-l", "-c", "print ok"])
+        .output()?;
+    let stdout = String::from_utf8_lossy(&output.stdout);
+
+    assert!(output.status.success());
+    assert_eq!(stdout.trim(), "ok");
+    Ok(())
+}
+
+#[test]
+fn short_flag_with_value_works() -> TestResult {
+    let mut cmd = Command::new(cargo_bin!());
+    let output = cmd
+        .args([
+            "--no-config-file",
+            "--no-std-lib",
+            "-m",
+            "basic",
+            "-c",
+            "print ok",
+        ])
+        .output()?;
+    let stdout = String::from_utf8_lossy(&output.stdout);
+
+    assert!(output.status.success());
+    assert_eq!(stdout.trim(), "ok");
+    Ok(())
+}
+
+#[test]
+fn mixed_long_and_short_flags_work() -> TestResult {
+    let mut cmd = Command::new(cargo_bin!());
+    let output = cmd
+        .args([
+            "--no-config-file",
+            "--no-std-lib",
+            "-il",
+            "--table-mode",
+            "basic",
+            "--error-style",
+            "plain",
+            "-c",
+            "print ok",
+        ])
+        .output()?;
+    let stdout = String::from_utf8_lossy(&output.stdout);
+
+    assert!(output.status.success());
+    assert_eq!(stdout.trim(), "ok");
     Ok(())
 }

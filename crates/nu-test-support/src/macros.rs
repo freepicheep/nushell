@@ -1,3 +1,5 @@
+use kitest::println;
+
 /// Run a command in nu and get its output
 ///
 /// The `nu!` macro accepts a number of options like the `cwd` in which the
@@ -446,6 +448,17 @@ fn setup_command(executable_path: &AbsolutePath, target_cwd: &AbsolutePath) -> C
                 || n.starts_with("RUSTUP_")
         })
         .collect();
+
+    #[cfg(windows)]
+    let mut envs = envs;
+
+    #[cfg(windows)]
+    if let Some(pathext) = envs.get_mut("PATHEXT")
+        && !pathext.to_uppercase().contains(".PS1")
+    {
+        pathext.push_str(";.PS1");
+    }
+
     command.envs(envs);
 
     command
