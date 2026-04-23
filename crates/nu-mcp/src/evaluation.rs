@@ -774,14 +774,18 @@ mod tests {
     use nu_engine::eval_expression;
     use nu_protocol::{
         ShellError, Signature, SyntaxShape, Value,
-        engine::{Call, Command as NuCommand, StateWorkingSet},
+        engine::{Call, Command as NuCommand},
         shell_error::io::IoError,
     };
+    #[cfg(unix)]
+    use nu_protocol::engine::StateWorkingSet;
     use std::process::{Command as ProcessCommand, Stdio};
 
+    #[cfg(unix)]
     #[derive(Clone)]
     struct TestRunExternal;
 
+    #[cfg(unix)]
     impl NuCommand for TestRunExternal {
         fn name(&self) -> &str {
             "run-external"

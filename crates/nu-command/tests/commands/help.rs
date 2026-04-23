@@ -228,7 +228,7 @@ export def foo [] {}
 }
 
 #[test]
-fn help_module_name() {
+fn help_module_name() -> Result {
     Playground::setup("help_module_name", |dirs, sandbox| {
         sandbox.with_files(&[FileWithContent(
             "spam.nu",
