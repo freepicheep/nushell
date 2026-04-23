@@ -1,6 +1,7 @@
 use nu_test_support::fs::Stub::FileWithContent;
 use nu_test_support::playground::Playground;
-use nu_test_support::{nu, nu_repl_code, nu_with_std};
+use nu_test_support::prelude::*;
+use nu_test_support::{nu_repl_code, nu_with_std};
 
 // Note: These tests might slightly overlap with tests/scope/mod.rs
 
@@ -194,6 +195,33 @@ fn help_module_description_1() {
         assert!(actual.out.contains("line2"));
         assert!(actual.out.contains("line3"));
     })
+}
+
+#[test]
+fn help_module_description_ignores_leading_shebang() -> Result {
+    Playground::setup(
+        "help_module_description_ignores_leading_shebang",
+        |dirs, sandbox| {
+            sandbox.with_files(&[FileWithContent(
+                "spam.nu",
+                "\
+#!/usr/bin/env nu
+
+# module_line1
+#
+# module_line2
+
+export def foo [] {}
+",
+            )]);
+
+            let mut tester = test().cwd(dirs.test());
+            let description: String = tester
+                .run("use spam.nu *; help modules | where name == spam | get 0.description")?;
+            assert_eq!(description, "module_line1");
+            Ok(())
+        },
+    )
 }
 
 #[test]
