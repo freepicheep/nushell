@@ -83,6 +83,8 @@ pub fn get_example_json() -> Value {
     "case_sensitive": false,
     "quick": true,
     "partial": true,
+    "auto_menu": false,
+    "auto_menu_delay": 250,
     "algorithm": "prefix",
     "external": {
       "enable": true,

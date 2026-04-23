@@ -195,6 +195,17 @@ $env.config.completions.quick = true
 # Default: true
 $env.config.completions.partial = true
 
+# completions.auto_menu (bool): Automatically show the completion menu while typing.
+# true: Open the completion menu after a short idle delay in insert mode.
+# false: Only open completion menus when explicitly requested.
+# Default: false
+$env.config.completions.auto_menu = false
+
+# completions.auto_menu_delay (int): Delay in milliseconds before auto-opening the completion menu.
+# This is a debounce for auto_menu and helps avoid repeatedly running slow custom completions.
+# Default: 250
+$env.config.completions.auto_menu_delay = 250
+
 # Example: If a directory contains only "forage", "food", and "forest",
 # typing "ls " and pressing Tab will partially complete the first matching letters.
 # If the directory also includes "faster", only "f" would be partially completed.

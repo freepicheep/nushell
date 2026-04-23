@@ -105,6 +105,8 @@ pub struct CompletionConfig {
     pub case_sensitive: bool,
     pub quick: bool,
     pub partial: bool,
+    pub auto_menu: bool,
+    pub auto_menu_delay: i64,
     pub algorithm: CompletionAlgorithm,
     pub external: ExternalCompleterConfig,
     pub use_ls_colors: bool,
@@ -117,6 +119,8 @@ impl Default for CompletionConfig {
             case_sensitive: false,
             quick: true,
             partial: true,
+            auto_menu: false,
+            auto_menu_delay: 250,
             algorithm: CompletionAlgorithm::default(),
             external: ExternalCompleterConfig::default(),
             use_ls_colors: true,
@@ -142,6 +146,18 @@ impl UpdateFromValue for CompletionConfig {
                 "sort" => self.sort.update(val, path, errors),
                 "quick" => self.quick.update(val, path, errors),
                 "partial" => self.partial.update(val, path, errors),
+                "auto_menu" => self.auto_menu.update(val, path, errors),
+                "auto_menu_delay" => {
+                    if let Ok(delay) = val.as_int() {
+                        if delay >= 0 {
+                            self.auto_menu_delay = delay;
+                        } else {
+                            errors.invalid_value(path, "an int greater than or equal to 0", val);
+                        }
+                    } else {
+                        errors.type_mismatch(path, Type::Int, val);
+                    }
+                }
                 "algorithm" => self.algorithm.update(val, path, errors),
                 "case_sensitive" => self.case_sensitive.update(val, path, errors),
                 "external" => self.external.update(val, path, errors),

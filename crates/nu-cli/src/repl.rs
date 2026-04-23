@@ -411,6 +411,10 @@ fn loop_iteration(ctx: LoopContext) -> (bool, Stack, Reedline) {
         )))
         .with_quick_completions(config.completions.quick)
         .with_partial_completions(config.completions.partial)
+        .with_auto_menu(config.completions.auto_menu)
+        .with_auto_menu_delay(std::time::Duration::from_millis(
+            config.completions.auto_menu_delay as u64,
+        ))
         .with_ansi_colors(config.use_ansi_coloring.get(engine_state))
         .with_cwd(Some(
             engine_state
