@@ -184,6 +184,34 @@ fn correct_scope_modules_fields() {
 }
 
 #[test]
+fn scope_modules_ignores_leading_shebang_in_module_description() {
+    Playground::setup(
+        "scope_modules_ignores_leading_shebang_in_module_description",
+        |dirs, sandbox| {
+            sandbox.with_files(&[FileWithContent(
+                "spam.nu",
+                "\
+#!/usr/bin/env nu
+
+# module_line1
+#
+# module_line2
+
+export def foo [] {}
+",
+            )]);
+
+            let inp = &[
+                "use spam.nu *",
+                "scope modules | where name == spam | get 0.description",
+            ];
+            let actual = nu!(cwd: dirs.test(), &inp.join("; "));
+            assert_eq!(actual.out, "module_line1");
+        },
+    )
+}
+
+#[test]
 fn correct_scope_aliases_fields() {
     let module_setup = "
         # nice alias
