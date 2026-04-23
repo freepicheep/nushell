@@ -771,7 +771,9 @@ fn process_pipeline(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[cfg(unix)]
     use nu_engine::eval_expression;
+    #[cfg(unix)]
     use nu_protocol::{
         ShellError, Signature, SyntaxShape, Value,
         engine::{Call, Command as NuCommand},
@@ -779,6 +781,7 @@ mod tests {
     };
     #[cfg(unix)]
     use nu_protocol::engine::StateWorkingSet;
+    #[cfg(unix)]
     use std::process::{Command as ProcessCommand, Stdio};
 
     #[cfg(unix)]
