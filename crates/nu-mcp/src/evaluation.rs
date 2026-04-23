@@ -774,13 +774,13 @@ mod tests {
     #[cfg(unix)]
     use nu_engine::eval_expression;
     #[cfg(unix)]
+    use nu_protocol::engine::StateWorkingSet;
+    #[cfg(unix)]
     use nu_protocol::{
         ShellError, Signature, SyntaxShape, Value,
         engine::{Call, Command as NuCommand},
         shell_error::io::IoError,
     };
-    #[cfg(unix)]
-    use nu_protocol::engine::StateWorkingSet;
     #[cfg(unix)]
     use std::process::{Command as ProcessCommand, Stdio};
 
