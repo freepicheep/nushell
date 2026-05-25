@@ -1084,9 +1084,12 @@ fn event_from_record(
         // Handled above in `parse_event`:
         //
         // `ReedlineEvent::Edit`
+        // `ReedlineEvent::Paste`
         // `ReedlineEvent::Multiple`
         // `ReedlineEvent::UntilFound`
-        Ok(RED::Mouse | RED::Resize) | Ok(RED::Edit | RED::Multiple | RED::UntilFound) | Err(_) => {
+        Ok(RED::Mouse | RED::Resize)
+        | Ok(RED::Edit | RED::Paste | RED::Multiple | RED::UntilFound)
+        | Err(_) => {
             return Err(ShellError::InvalidValue {
                 valid: "a reedline event".into(),
                 actual: format!("'{name}'"),
@@ -1113,7 +1116,8 @@ pub(crate) fn display_reedline_event(event: ReedlineEventDiscriminants) -> Optio
         RED::Submit => "Submit",
         RED::SubmitOrNewline => "SubmitOrNewline",
         RED::Esc => "Esc",
-        RED::Edit => "event: { edit: <edit> }",
+        RED::Edit => "Edit: <EditCommand> or Edit: <EditCommand> value: <string>",
+        RED::Paste => "Paste: <EditCommand> or Paste: <EditCommand> value: <string>",
         RED::Repaint => "Repaint",
         RED::PreviousHistory => "PreviousHistory",
         RED::Up => "Up",
