@@ -310,6 +310,9 @@ pub struct CompletionOptions {
     pub match_algorithm: MatchAlgorithm,
     pub sort: CompletionSort,
     pub match_description: bool,
+    /// Include `.` and `..` as synthetic entries when listing a directory
+    /// for path completion.
+    pub show_special_directories: bool,
 }
 
 impl Default for CompletionOptions {
@@ -319,6 +322,7 @@ impl Default for CompletionOptions {
             match_algorithm: MatchAlgorithm::Prefix,
             sort: Default::default(),
             match_description: false,
+            show_special_directories: false,
         }
     }
 }

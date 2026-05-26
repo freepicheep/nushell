@@ -747,6 +747,7 @@ impl NuCompleter {
             match_algorithm: config.completions.algorithm.into(),
             sort: config.completions.sort,
             match_description: false,
+            show_special_directories: config.completions.show_special_directories,
         };
 
         completer.fetch(

@@ -1450,6 +1450,56 @@ fn file_completions() {
     match_suggestions(&expected_paths, &suggestions)
 }
 
+/// With `completions.show_special_directories = true`, the synthetic `.` and
+/// `..` entries are surfaced alongside real entries. They are grouped with
+/// hidden items (after the regular entries) because they sort with dotfiles.
+#[test]
+fn show_special_directories_setting() {
+    let (dir, dir_str, mut engine, mut stack) = new_engine();
+    let config = "$env.config.completions.show_special_directories = true";
+    assert!(support::merge_input(config.as_bytes(), &mut engine, &mut stack).is_ok());
+
+    let mut completer = NuCompleter::new(Arc::new(engine), Arc::new(stack));
+
+    // Listing the fixture root with the setting on should include `./` and `../`
+    // alongside the real entries.
+    let target = format!("cp {dir_str}{MAIN_SEPARATOR}");
+    let suggestions = completer.complete(&target, target.len());
+
+    // Synthetic entries are inserted into the matcher before the real
+    // `read_dir` results, so they appear at the front of the hidden bucket
+    // (which is appended after the non-hidden entries).
+    let expected = [
+        folder(dir.join("another")),
+        file(dir.join("custom_completion.nu")),
+        folder(dir.join("directory_completion")),
+        file(dir.join("nushell")),
+        folder(dir.join("test_a")),
+        folder(dir.join("test_a_symlink")),
+        folder(dir.join("test_b")),
+        folder(dir.join(".")),
+        folder(dir.join("..")),
+        file(dir.join(".hidden_file")),
+        folder(dir.join(".hidden_folder")),
+    ];
+    match_suggestions_by_string(&expected, &suggestions);
+
+    // Default (setting off) should not include `.` or `..`.
+    let (_, dir_str_off, engine_off, stack_off) = new_engine();
+    let mut completer_off = NuCompleter::new(Arc::new(engine_off), Arc::new(stack_off));
+    let target_off = format!("cp {dir_str_off}{MAIN_SEPARATOR}");
+    let suggestions_off = completer_off.complete(&target_off, target_off.len());
+    let dot = format!(".{MAIN_SEPARATOR}");
+    let dotdot = format!("..{MAIN_SEPARATOR}");
+    assert!(
+        !suggestions_off
+            .iter()
+            .any(|s| s.value.ends_with(&dot) || s.value.ends_with(&dotdot)),
+        "default off: expected no `.` or `..` entries, got {:?}",
+        suggestions_off.iter().map(|s| &s.value).collect::<Vec<_>>()
+    );
+}
+
 #[test]
 fn custom_command_rest_any_args_file_completions() {
     // Create a new engine

@@ -1,6 +1,6 @@
 use crate::completions::{
     Completer, CompletionOptions,
-    completion_common::{AdjustView, adjust_if_intermediate, complete_item},
+    completion_common::{AdjustView, adjust_if_intermediate, complete_item, is_special_dir_entry},
 };
 use nu_protocol::{
     Span, SuggestionKind,
@@ -67,6 +67,14 @@ impl Completer for FileCompletion {
         let mut non_hidden: Vec<SemanticSuggestion> = vec![];
 
         for item in items.into_iter() {
+            // `Path::file_name()` returns `None` for paths whose final component
+            // is `.` or `..`, so detect those special entries on the raw string
+            // and group them with hidden items.
+            if is_special_dir_entry(&item.suggestion.value) {
+                hidden.push(item);
+                continue;
+            }
+
             let item_path = Path::new(&item.suggestion.value);
 
             if let Some(value) = item_path.file_name()

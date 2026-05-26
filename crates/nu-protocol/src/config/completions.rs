@@ -115,6 +115,10 @@ pub struct CompletionConfig {
     /// on every keystroke; a positive duration only opens it once typing
     /// pauses for at least this long.
     pub auto_menu_delay: Duration,
+    /// Show the POSIX special directory entries `.` (current directory) and
+    /// `..` (parent directory) in the path completion menu. Off by default
+    /// because Rust's `read_dir()` filters them out.
+    pub show_special_directories: bool,
 }
 
 impl Default for CompletionConfig {
@@ -129,6 +133,7 @@ impl Default for CompletionConfig {
             use_ls_colors: true,
             auto_menu: false,
             auto_menu_delay: Duration::ZERO,
+            show_special_directories: false,
         }
     }
 }
@@ -163,6 +168,9 @@ impl UpdateFromValue for CompletionConfig {
                     Ok(_) => errors.invalid_value(path, "a non-negative duration", val),
                     Err(_) => errors.type_mismatch(path, Type::Duration, val),
                 },
+                "show_special_directories" => {
+                    self.show_special_directories.update(val, path, errors)
+                }
                 _ => errors.unknown_option(path, val),
             }
         }

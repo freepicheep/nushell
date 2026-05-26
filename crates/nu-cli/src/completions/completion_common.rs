@@ -84,6 +84,24 @@ fn complete_rec(
             path.push(part.text.as_str());
         }
 
+        // `read_dir` filters out the POSIX special directory entries `.` and `..`,
+        // so synthesize them here when the user has opted in via
+        // `completions.show_special_directories`. Only do this on the final
+        // completion segment (`!has_more`) so we don't try to recurse into a
+        // synthetic `.` later, and skip `..` at the filesystem root where it
+        // would be a self-reference.
+        if options.show_special_directories && !has_more && path.is_dir() {
+            let mut dot = built.clone();
+            dot.isdir = true;
+            matcher.add(".".to_string(), (dot, ".".to_string()));
+
+            if path.parent().is_some() {
+                let mut dotdot = built.clone();
+                dotdot.isdir = true;
+                matcher.add("..".to_string(), (dotdot, "..".to_string()));
+            }
+        }
+
         let Ok(result) = path.read_dir() else {
             continue;
         };
@@ -168,6 +186,19 @@ enum OriginalCwd {
     None,
     Home,
     Prefix(String),
+}
+
+/// Returns true if `path` denotes the POSIX special directory entries `.` or
+/// `..` (with or without a trailing path separator). Used to group synthetic
+/// entries injected by [`complete_rec`] under the hidden-results bucket, since
+/// `std::path::Path::file_name` returns `None` for these components.
+pub fn is_special_dir_entry(path: &str) -> bool {
+    let trimmed = path.trim_end_matches(is_separator);
+    matches!(trimmed, "." | "..")
+        || trimmed.ends_with("/.")
+        || trimmed.ends_with("/..")
+        || trimmed.ends_with("\\.")
+        || trimmed.ends_with("\\..")
 }
 
 pub fn surround_remove(partial: &str) -> String {
