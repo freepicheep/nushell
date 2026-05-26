@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use super::{config_update_string_enum, prelude::*};
 use crate as nu_protocol;
 use crate::engine::Closure;
@@ -109,6 +111,10 @@ pub struct CompletionConfig {
     pub external: ExternalCompleterConfig,
     pub use_ls_colors: bool,
     pub type_to_complete: bool,
+    /// Debounce window applied to [`type_to_complete`]. Zero opens the menu
+    /// on every keystroke; a positive duration only opens it once typing
+    /// pauses for at least this long.
+    pub type_to_complete_delay: Duration,
 }
 
 impl Default for CompletionConfig {
@@ -122,6 +128,7 @@ impl Default for CompletionConfig {
             external: ExternalCompleterConfig::default(),
             use_ls_colors: true,
             type_to_complete: false,
+            type_to_complete_delay: Duration::ZERO,
         }
     }
 }
@@ -149,6 +156,13 @@ impl UpdateFromValue for CompletionConfig {
                 "external" => self.external.update(val, path, errors),
                 "use_ls_colors" => self.use_ls_colors.update(val, path, errors),
                 "type_to_complete" => self.type_to_complete.update(val, path, errors),
+                "type_to_complete_delay" => match val.as_duration() {
+                    Ok(nanos) if nanos >= 0 => {
+                        self.type_to_complete_delay = Duration::from_nanos(nanos as u64);
+                    }
+                    Ok(_) => errors.invalid_value(path, "a non-negative duration", val),
+                    Err(_) => errors.type_mismatch(path, Type::Duration, val),
+                },
                 _ => errors.unknown_option(path, val),
             }
         }
