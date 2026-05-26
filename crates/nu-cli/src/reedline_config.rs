@@ -186,11 +186,8 @@ pub(crate) fn add_menus(
     }
 
     line_editor = line_editor
-        .with_autocompletion(
-            config.completions.type_to_complete,
-            "completion_menu".into(),
-        )
-        .with_autocompletion_delay(config.completions.type_to_complete_delay);
+        .with_auto_menu(config.completions.auto_menu, "completion_menu".into())
+        .with_auto_menu_delay(config.completions.auto_menu_delay);
 
     Ok(line_editor)
 }

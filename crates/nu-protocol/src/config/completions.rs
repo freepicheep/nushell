@@ -110,11 +110,11 @@ pub struct CompletionConfig {
     pub algorithm: CompletionAlgorithm,
     pub external: ExternalCompleterConfig,
     pub use_ls_colors: bool,
-    pub type_to_complete: bool,
-    /// Debounce window applied to [`type_to_complete`]. Zero opens the menu
+    pub auto_menu: bool,
+    /// Debounce window applied to [`auto_menu`]. Zero opens the menu
     /// on every keystroke; a positive duration only opens it once typing
     /// pauses for at least this long.
-    pub type_to_complete_delay: Duration,
+    pub auto_menu_delay: Duration,
 }
 
 impl Default for CompletionConfig {
@@ -127,8 +127,8 @@ impl Default for CompletionConfig {
             algorithm: CompletionAlgorithm::default(),
             external: ExternalCompleterConfig::default(),
             use_ls_colors: true,
-            type_to_complete: false,
-            type_to_complete_delay: Duration::ZERO,
+            auto_menu: false,
+            auto_menu_delay: Duration::ZERO,
         }
     }
 }
@@ -155,10 +155,10 @@ impl UpdateFromValue for CompletionConfig {
                 "case_sensitive" => self.case_sensitive.update(val, path, errors),
                 "external" => self.external.update(val, path, errors),
                 "use_ls_colors" => self.use_ls_colors.update(val, path, errors),
-                "type_to_complete" => self.type_to_complete.update(val, path, errors),
-                "type_to_complete_delay" => match val.as_duration() {
+                "auto_menu" => self.auto_menu.update(val, path, errors),
+                "auto_menu_delay" => match val.as_duration() {
                     Ok(nanos) if nanos >= 0 => {
-                        self.type_to_complete_delay = Duration::from_nanos(nanos as u64);
+                        self.auto_menu_delay = Duration::from_nanos(nanos as u64);
                     }
                     Ok(_) => errors.invalid_value(path, "a non-negative duration", val),
                     Err(_) => errors.type_mismatch(path, Type::Duration, val),
